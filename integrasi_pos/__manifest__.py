@@ -22,7 +22,7 @@
     # for the full list
 
     # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['base', 'sale', 'stock'],  # ['base', 'sale', 'mrp'],
+    'depends': ['base', 'sale', 'stock', 'point_of_sale', 'contacts', 'account'],  # ['base', 'sale', 'mrp'],
 
     # always loaded
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
@@ -32,6 +32,9 @@
         'views/log_code_runtime_view.xml',
         'views/log_note_view.xml',
         'views/log_menu.xml',
+        'views/stock_picking_view.xml',
+        'views/pos_session_view.xml',\
+        'views/pos_order_view.xml',
     ],
 
     'installable': True,

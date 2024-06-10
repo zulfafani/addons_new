@@ -1,0 +1,14 @@
+{
+    "odoo_db1a": {
+        "url": "http://pos-store.visi-intech.com/jsonrpc",
+        "db": "odoo17db",
+        "username": "admin",
+        "password": "7ebf141ce195cf72c3c640a18f9e34a1244b6202"
+    },
+    "odoo_db1": {
+        "url": "http://pos-mc.visi-intech.com/jsonrpc",
+        "db": "odoo17db",
+        "username": "admin",
+        "password": "cda99705bf690ace33af7cf87e1f4c5a75a8482a"
+    }
+}
