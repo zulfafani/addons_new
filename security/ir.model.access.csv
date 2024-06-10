@@ -1,0 +1,3 @@
+id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+access_log_note,access_log.note,model_log_note,base.group_user,1,1,1,1
+access_log_code_runtime,access_log.code.runtime,model_log_code_runtime,base.group_user,1,1,1,1
