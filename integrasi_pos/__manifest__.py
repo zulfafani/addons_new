@@ -22,7 +22,7 @@
     # for the full list
 
     # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['base', 'sale', 'stock'],  # ['base', 'sale', 'mrp'],
+    'depends': ['base', 'sale', 'stock', 'point_of_sale'],  # ['base', 'sale', 'mrp'],
 
     # always loaded
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.

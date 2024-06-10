@@ -23,21 +23,52 @@
         "username": "zulfafani@gmail.com",
         "password": "gAAAAABmRHzNIM3yBRwGYw-AiQ_5AcAYQ1mmRiC0N5IeLVDAqypfNMh07HsVp2xeTUQhFWVHpfcmHvGNmr7xtksY_b2lUsr0fg=="
     },
-    "odoo_db_mc": {
-        "url": "http://103.18.133.34:8062/jsonrpc",
-        "db": "devtest",
-        "username": "admin",
-        "password": "gAAAAABmXX6WOk94ADfdwGxsLcJ9KLqv1SbrUw49ZaYCztE9vxmycIMLBl3s1SckhVag6hbLuCLp-FxLjayenHA6JAln_qJILQ=="
-    },
     "odoo_db": {
         "url": "http://192.168.25.137:8060/jsonrpc",
         "db": "OdooTest",
         "username": "zulfafani@gmail.com",
         "password": "gAAAAABmRHzNIM3yBRwGYw-AiQ_5AcAYQ1mmRiC0N5IeLVDAqypfNMh07HsVp2xeTUQhFWVHpfcmHvGNmr7xtksY_b2lUsr0fg=="
     },
-    "odoo_zulfa": {
-        "url": "http://192.168.25.137:8060/jsonrpc",
-        "db": "OdooTest",
+    "odoo_dbmc_lt1": {
+        "url": "http://103.18.133.34:8062/jsonrpc",
+        "db": "devtest",
+        "username": "admin",
+        "password": "gAAAAABmXX6WOk94ADfdwGxsLcJ9KLqv1SbrUw49ZaYCztE9vxmycIMLBl3s1SckhVag6hbLuCLp-FxLjayenHA6JAln_qJILQ=="
+    },
+    "odoo_zulfa1_lt2": {
+        "url": "http://192.168.1.187:8069/jsonrpc",
+        "db": "OdooStoreServer1",
         "username": "zulfafani@gmail.com",
         "password": "gAAAAABmRHzNIM3yBRwGYw-AiQ_5AcAYQ1mmRiC0N5IeLVDAqypfNMh07HsVp2xeTUQhFWVHpfcmHvGNmr7xtksY_b2lUsr0fg=="
+    },
+    "odoo_zulfa2_lt2": {
+        "url": "http://192.168.1.187:8070/jsonrpc",
+        "db": "OdooStoreServer2",
+        "username": "admin",
+        "password": "gAAAAABmRHzNHQCbLcZii4LX4qZsLildRg2SeWgh6dnE1JiDRmemFjKYOSbBqqGboSegpR_pIJ-95218Oy183A9wfVtKhKsOCw=="
+    },
+    "odoo_zulfa1_ip": {
+        "url": "http://172.20.10.6:8069/jsonrpc",
+        "db": "OdooStoreServer1",
+        "username": "zulfafani@gmail.com",
+        "password": "gAAAAABmRHzNIM3yBRwGYw-AiQ_5AcAYQ1mmRiC0N5IeLVDAqypfNMh07HsVp2xeTUQhFWVHpfcmHvGNmr7xtksY_b2lUsr0fg=="
+    },
+    "odoo_zulfa2_ip": {
+        "url": "http://172.20.10.6:8070/jsonrpc",
+        "db": "OdooStoreServer2",
+        "username": "admin",
+        "password": "gAAAAABmRHzNHQCbLcZii4LX4qZsLildRg2SeWgh6dnE1JiDRmemFjKYOSbBqqGboSegpR_pIJ-95218Oy183A9wfVtKhKsOCw=="
+    },
+    "odoo_zulfa1_lt1": {
+        "url": "http://192.168.25.178:8069/jsonrpc",
+        "db": "OdooStoreServer1",
+        "username": "zulfafani@gmail.com",
+        "password": "gAAAAABmRHzNIM3yBRwGYw-AiQ_5AcAYQ1mmRiC0N5IeLVDAqypfNMh07HsVp2xeTUQhFWVHpfcmHvGNmr7xtksY_b2lUsr0fg=="
+    },
+    "odoo_zulfa2_lt1": {
+        "url": "http://192.168.25.178:8070/jsonrpc",
+        "db": "OdooStoreServer2",
+        "username": "admin",
+        "password": "gAAAAABmRHzNHQCbLcZii4LX4qZsLildRg2SeWgh6dnE1JiDRmemFjKYOSbBqqGboSegpR_pIJ-95218Oy183A9wfVtKhKsOCw=="
+    }
 }
