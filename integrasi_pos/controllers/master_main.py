@@ -42,12 +42,14 @@ def main():
         # integrator_master.transfer_data_mc('res.partner.title', ['name', 'shortcut'], 'Master Customer Title')
         # integrator_master.transfer_data_mc('res.partner', ['name', 'street', 'street2', 'phone', 'mobile', 'email', 'website','title','customer_rank', 'supplier_rank', 'customer_code'], 'Master Customer')
         # Transaksi Store Server to Master Console
-        # integrator_transaksi.transfer_transaksi('account.move', ['name', 'partner_id', 'invoice_date', 'payment_reference', 'invoice_date_due', 'journal_id', 'state', 'move_type', 'invoice_line_ids'], 'Transaksi Invoice')
+        # integrator_transaksi.transfer_transaksi('account.move', ['name', 'partner_id', 'invoice_date', 'payment_reference', 'invoice_date_due', 'journal_id', 'state', 'ref', 'move_type', 'invoice_line_ids'], 'Transaksi Invoice')
         # integrator_transaksi.transfer_pos_order_inventory('stock.picking', ['name', 'partner_id', 'location_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
-        integrator_transaksi.transfer_pos_order_session('pos.session', ['name', 'config_id', 'user_id', 'start_at', 'stop_at', 'state'], 'Master Session PoS Order Invoice')
         # integrator_transaksi.update_session_status('pos.session', ['name', 'state', 'start_at', 'stop_at', 'cash_register_balance_start', 'cash_register_balance_end_real'], 'Update Session PoS Order')
-        # integrator_transaksi.transfer_pos_order_invoice('pos.order', ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'lines', 'payment_ids'], 'Transaksi PoS Order Invoice')
+        # integrator_transaksi.transfer_pos_order_session('pos.session', ['name', 'config_id', 'user_id', 'start_at', 'stop_at', 'state'], 'Master Session PoS Order Invoice')
+        # integrator_transaksi.transfer_pos_order_invoice('pos.order', ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids'], 'Transaksi PoS Order Invoice')
+        # integrator_transaksi.debug_taxes('account.tax', ['name', 'id'], 'Taxes Invoice')
         # integrator_transaksi.update_integrated('pos.session', ['is_integrated'], "Session Updated")
+        integrator_transaksi.update_status_order_pos('pos.order', ['name', 'state'], "Session Updated")
 
 if __name__ == '__main__':
     main()

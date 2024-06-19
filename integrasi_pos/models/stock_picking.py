@@ -8,3 +8,4 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     is_integrated = fields.Boolean(string="Integrated", default=False)
+    vit_trxid = fields.Char(string="Transaction ID")

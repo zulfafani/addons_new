@@ -1,5 +1,6 @@
 import time
 from datetime import datetime, timedelta
+import pytz
 
 
 # kalau ada case store nya beda zona waktu gimana
@@ -92,10 +93,11 @@ class DataTransaksi:
                                                                     self.source_client.uid, self.source_client.password,
                                                                     'product.product', 'search_read',
                                                                     [[['id', '=', product_id]]],
-                                                                    {'fields': ['default_code'], 'limit': 1})
+                                                                    {'fields': ['default_code', 'taxes_id'], 'limit': 1})
 
                         if product_source and 'default_code' in product_source[0]:
                             default_code = product_source[0]['default_code']
+                            taxes_ids = product_source[0].get('taxes_id', [])
 
                             # Search for the product in the target system using default_code
                             product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
@@ -117,6 +119,26 @@ class DataTransaksi:
                         print(f"Line item tidak memiliki 'product_id'.")
                         continue
 
+                    tax_ids = []
+                    for tax_id in taxes_ids:
+                        tax_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                self.source_client.uid, self.source_client.password,
+                                                                'account.tax', 'search_read',
+                                                                [[['id', '=', tax_id]]],
+                                                                {'fields': ['name']})
+
+                        if tax_source:
+                            tax_name = tax_source[0]['name']
+
+                            tax_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'account.tax', 'search_read',
+                                                                    [[['name', '=', tax_name]]],
+                                                                    {'fields': ['id'], 'limit': 1})
+
+                            if tax_target:
+                                tax_ids.append((tax_target[0]['id']))
+
                     if account_id:
                         account_id = account_id[0]  # account_id is a list [id, name], we need the id
                     else:
@@ -128,6 +150,7 @@ class DataTransaksi:
                         'name': line.get('name'),
                         'quantity': line.get('quantity'),
                         'price_unit': line.get('price_unit'),
+                        'tax_ids': tax_ids,
                         # 'account_id': account_id,
                     }
                     invoice_line_ids.append((0, 0, invoice_line_data))
@@ -226,7 +249,7 @@ class DataTransaksi:
             existing_pos_order_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                                         self.target_client.uid, self.target_client.password,
                                                                         'stock.picking', 'search_read',
-                                                                        [[['origin', '=', record.get('origin')], ['picking_type_id.name', '=', 'PoS Orders']]],
+                                                                        [[['vit_trxid', '=', record.get('origin')], ['picking_type_id.name', '=', 'PoS Orders']]],
                                                                         {'fields': ['id'], 'limit': 1})
 
             if not existing_pos_order_inventory:
@@ -257,7 +280,7 @@ class DataTransaksi:
                                                                 {'fields': ['id'], 'limit': 1})
 
                 if not location_target:
-                    print(f"Tidak dapat menemukan'complete_name' {complete_name} di database target.")
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
                     continue
 
                 location_target_id = location_target[0]['id']
@@ -288,7 +311,7 @@ class DataTransaksi:
                                                                 {'fields': ['id'], 'limit': 1})
 
                 if not location_dest_target:
-                    print(f"Tidak dapat menemukan'complete_name' {complete_name_dest} di database target.")
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
                     continue
 
                 location_dest_target_id = location_dest_target[0]['id']
@@ -361,30 +384,33 @@ class DataTransaksi:
                 picking_type_id = picking_types[0]['id']
 
                 pos_order_data = {
-                    # 'name': record.get('name', False),
+                    'name': record.get('name', False) + ' - ' + datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S"),
                     'partner_id': customer_target_id,
                     'scheduled_date': record.get('scheduled_date', False),
                     'date_done': record.get('date_done', False),
-                    'origin': record.get('origin', False),
+                    'vit_trxid': record.get('origin', False),
                     'location_id': location_target_id,
                     'location_dest_id': location_dest_target_id,
                     'picking_type_id': picking_type_id,
-                    # 'company_id': record.get('company_id', False),
                     'move_ids_without_package': pos_order_inventory_line_ids,
                 }
 
-                new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                self.target_client.uid, self.target_client.password,
-                                                                'stock.picking', 'create',
-                                                                [pos_order_data])
-                print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
+                try:
+                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [pos_order_data])
+                    print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
 
-                #Post the new invoice
-                self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                            self.target_client.uid, self.target_client.password,
-                                            'stock.picking', 'button_validate',
-                                            [new_pos_order_id])
-                print(f"Invoice dengan ID: {new_pos_order_id} telah diposting.")
+                    # Post the new invoice
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password,
+                                                'stock.picking', 'button_validate',
+                                                [new_pos_order_id])
+                    print(f"Invoice dengan ID: {new_pos_order_id} telah diposting.")
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting Pos Order baru: {e}")
+
 
     def transfer_pos_order_invoice(self, model_name, fields, description):
         # Ambil data dari sumber
@@ -476,7 +502,7 @@ class DataTransaksi:
                                                                     self.source_client.uid, self.source_client.password,
                                                                     'pos.order.line', 'search_read',
                                                                     [[['order_id', '=', record['id']]]],
-                                                                    {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit']})
+                                                                    {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit', 'tax_ids_after_fiscal_position', 'discount', 'price_subtotal', 'price_subtotal_incl']})
                 pos_order_invoice_line_ids = []
                 pos_order_payment_ids = []
                 missing_products = []
@@ -484,36 +510,57 @@ class DataTransaksi:
 
                 # Check if all products exist in the target database
                 for line in pos_order_invoice_lines:
-                    product_id = line.get('product_id')
-                    if product_id:
-                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+                    product_id = line.get('product_id')[0]  # product_id is a list [id, name], we need the id
 
-                        # Get the default_code for the product in the source system
-                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                    self.source_client.uid, self.source_client.password,
-                                                                    'product.product', 'search_read',
-                                                                    [[['id', '=', product_id]]],
-                                                                    {'fields': ['default_code'], 'limit': 1})
+                    product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                self.source_client.uid, self.source_client.password,
+                                                                'product.product', 'search_read',
+                                                                [[['id', '=', product_id]]],
+                                                                {'fields': ['default_code', 'taxes_id'], 'limit': 1})
 
-                        if product_source and 'default_code' in product_source[0]:
-                            default_code = product_source[0]['default_code']
+                    default_code = product_source[0]['default_code']
+                    taxes_ids = product_source[0].get('taxes_id', [])
 
-                            # Search for the product in the target system using default_code
-                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                        self.target_client.uid, self.target_client.password,
-                                                                        'product.product', 'search_read',
-                                                                        [[['default_code', '=', default_code]]],
-                                                                        {'fields': ['id'], 'limit': 1})
+                    product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'product.product', 'search_read',
+                                                                [[['default_code', '=', default_code]]],
+                                                                {'fields': ['id'], 'limit': 1})
 
-                            if not product_target:
-                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
-                                missing_products.append(default_code)
-                        else:
-                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
-                            return
-                    else:
-                        print(f"Line item tidak memiliki 'product_id'.")
-                        continue
+                    product_target_id = product_target[0]['id']
+
+                    # Prepare tax_ids_after_fiscal_position
+                    tax_ids = []
+                    for tax_id in taxes_ids:
+                        tax_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                self.source_client.uid, self.source_client.password,
+                                                                'account.tax', 'search_read',
+                                                                [[['id', '=', tax_id]]],
+                                                                {'fields': ['name']})
+
+                        if tax_source:
+                            tax_name = tax_source[0]['name']
+
+                            tax_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'account.tax', 'search_read',
+                                                                    [[['name', '=', tax_name]]],
+                                                                    {'fields': ['id'], 'limit': 1})
+
+                            if tax_target:
+                                tax_ids.append(([tax_target[0]['id']]))
+
+                        pos_order_line_data = {
+                            'product_id': product_target_id,
+                            'discount': line.get('discount'),
+                            'full_product_name': line.get('full_product_name'),
+                            'qty': line.get('qty'),
+                            'price_unit': line.get('price_unit'),
+                            'price_subtotal': line.get('price_subtotal'),
+                            'price_subtotal_incl': line.get('price_subtotal_incl'),
+                            'tax_ids_after_fiscal_position': tax_ids,
+                        }
+                        pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
 
                 # If there are missing products, log the error and continue with the next record
                 if missing_products:
@@ -524,39 +571,8 @@ class DataTransaksi:
                     self.set_log_ss.create_log_note_failed(record, 'Invoice', message)
                     continue
 
-                # Process the products if all are available in the target
-                for line in pos_order_invoice_lines:
-                    product_id = line.get('product_id')[0]  # product_id is a list [id, name], we need the id
-
-                    product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                'product.product', 'search_read',
-                                                                [[['id', '=', product_id]]],
-                                                                {'fields': ['default_code'], 'limit': 1})
-
-                    default_code = product_source[0]['default_code']
-
-                    product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                self.target_client.uid, self.target_client.password,
-                                                                'product.product', 'search_read',
-                                                                [[['default_code', '=', default_code]]],
-                                                                {'fields': ['id'], 'limit': 1})
-
-                    product_id = product_target[0]['id']
-
-                    pos_order_line_data = {
-                        'product_id': product_id,
-                        'full_product_name': line.get('full_product_name'),
-                        'qty': line.get('qty'),
-                        'price_unit': line.get('price_unit'),
-                        'price_subtotal': line.get('price_unit') * line.get('qty'),
-                        'price_subtotal_incl': line.get('price_unit') * line.get('qty'),
-                    }
-                    pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
-
-
-                    # Assume each line has a fixed tax rate of 10% for demonstration purposes
-                    # total_tax += line.get('price_unit') * line.get('qty') * 0.10
+                # Assume each line has a fixed tax rate of 10% for demonstration purposes
+                # total_tax += line.get('price_unit') * line.get('qty') * 0.10
 
                 # Ambil data pembayaran dari sumber
                 pos_order_payments = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
@@ -607,7 +623,7 @@ class DataTransaksi:
                         'payment_method_id': payment_method_id,
                     }
                     pos_order_payment_ids.append((0, 0, pos_order_payment_data))
-                
+
                 pos_order_data = {
                     'name': record.get('name'),
                     'pos_reference': record.get('pos_reference'),
@@ -619,25 +635,28 @@ class DataTransaksi:
                     'amount_total': amount_paid,
                     'amount_paid': amount_paid,
                     'amount_return': record.get('amount_return'),
+                    'tracking_number': record.get('tracking_number'),
                     # 'is_integrated': True,
                     'lines': pos_order_invoice_line_ids,
                     'payment_ids': pos_order_payment_ids,
-                    'state': 'paid'
+                    'margin': record.get('margin'),
+                    # 'state': 'paid',
                 }
 
                 new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                                 self.target_client.uid, self.target_client.password,
                                                                 'pos.order', 'create',
                                                                 [pos_order_data])
-                
+
                 print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
-                
+
                 self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                self.target_client.uid, self.target_client.password,
-                                                'pos.order', 'action_pos_order_invoice',
-                                                [new_pos_order_id])
-                
+                                            self.target_client.uid, self.target_client.password,
+                                            'pos.order', 'action_pos_order_invoice',
+                                            [new_pos_order_id])
+
                 print(f"Pos Order baru telah dibuatkan invoice ID: {new_pos_order_id}")
+
 
     def transfer_pos_order_session(self, model_name, fields, description):
         # Ambil data dari sumber
@@ -741,9 +760,19 @@ class DataTransaksi:
             existing_pos_order_invoice = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                                         self.target_client.uid, self.target_client.password,
                                                                         'pos.session', 'search_read',
-                                                                        [[['name', '=', record.get('name')]]],
+                                                                        [[['name_session_pos', '=', record.get('name')]]],
                                                                         {'fields': ['id'], 'limit': 1})
+            cash_register_balance_start = record.get('cash_register_balance_start')
+            cash_register_balance_end_real = record.get('cash_register_balance_end_real')
 
+            # Debugging prints
+            print(f"Cash Register Balance Start: {cash_register_balance_start}")
+            print(f"Cash Register Balance End Real: {cash_register_balance_end_real}")
+
+            # Ensure monetary values are properly handled
+            cash_register_balance_start = float(cash_register_balance_start) if cash_register_balance_start else 0.0
+            cash_register_balance_end_real = float(cash_register_balance_end_real) if cash_register_balance_end_real else 0.0
+            
             if not existing_pos_order_invoice:
                 pos_session_data = {
                     'name_session_pos': record.get('name'),
@@ -751,8 +780,8 @@ class DataTransaksi:
                     'user_id': user_target_id,
                     'start_at': record.get('start_at'),
                     'stop_at': record.get('stop_at'),
-                    'cash_register_balance_start': record.get('cash_register_balance_start'),
-                    'cash_register_balance_end_real': record.get('cash_register_balance_end_real'),
+                    'cash_register_balance_start': cash_register_balance_start,
+                    'cash_register_balance_end_real': cash_register_balance_end_real,
                     'state': record.get('state'),
                 }
 
@@ -761,7 +790,7 @@ class DataTransaksi:
                                                                 self.target_client.uid, self.target_client.password,
                                                                 'pos.session', 'create',
                                                                 [pos_session_data])
-                print(f"Pos Order baru telah dibuat dengan ID: {new_session_pos_order_id}")
+                print(f"Pos Order Session baru telah dibuat dengan ID: {new_session_pos_order_id}")
             except Exception as e:
                 print(f"Terjadi kesalahan saat membuat pos order baru: {e}")
 
@@ -783,6 +812,17 @@ class DataTransaksi:
             start_at = record.get('start_at')
             stop_at = record.get('stop_at')
 
+            cash_register_balance_start = record.get('cash_register_balance_start')
+            cash_register_balance_end_real = record.get('cash_register_balance_end_real')
+
+            # Debugging prints
+            print(f"Cash Register Balance Start: {cash_register_balance_start}")
+            print(f"Cash Register Balance End Real: {cash_register_balance_end_real}")
+
+            # Ensure monetary values are properly handled
+            cash_register_balance_start = float(cash_register_balance_start) if cash_register_balance_start else 0.0
+            cash_register_balance_end_real = float(cash_register_balance_end_real) if cash_register_balance_end_real else 0.0
+
             if not state:
                 print(f"Status sesi {name} tidak valid.")
                 continue
@@ -803,12 +843,42 @@ class DataTransaksi:
             update_result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                              self.target_client.uid, self.target_client.password,
                                              model_name, 'write',
-                                             [[session_id], {'state': state, 'start_at': start_at, 'stop_at': stop_at}])
+                                             [[session_id], {'state': state, 'start_at': start_at, 'stop_at': stop_at, 'cash_register_balance_start': cash_register_balance_start, 'cash_register_balance_end_real': cash_register_balance_end_real}])
 
             if update_result:
                 print(f"Berhasil mengupdate sesi {name} dengan status {state}.")
             else:
                 print(f"Gagal mengupdate sesi {name}.")
+
+    def debug_taxes(self, model_name, fields, description):
+        search_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            model_name, 'search_read',
+                                                            [[]],
+                                                            {'fields': fields})
+        
+        tax_id = search_target[0]['id']
+
+        search_target_tax = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'account.tax', 'search_read',
+                                                            [[['id', '=', tax_id]]],
+                                                            {'fields': ['name']})
+        
+        name_tax_id = search_target_tax[0]['name']
+        
+        tax_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'account.tax', 'search_read',
+                                                            [[['name', '=', name_tax_id]]],
+                                                            {'fields': fields})
+        
+        name_tax_target = tax_target[0]['name']                   
+        if tax_target:
+            tax_id = tax_target[0]['id']
+            print(f"Nama tax {name_tax_target} di database target: {tax_id}")
+        else:
+            print(f"Tidak dapat menemukan pajak dengan nama 'OUT15%' di database target.")
         
     def update_integrated(self, model_name, fields, description):
         # Mengambil data dari Odoo
@@ -834,6 +904,37 @@ class DataTransaksi:
                 print("Failed to update records.")
         else:
             print("No records found to update.")
+
+    def update_status_order_pos(self, model_name, fields, description):
+        # Mengambil data dari Odoo
+        config_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                    self.target_client.uid, self.target_client.password,
+                                                    model_name, 'search_read',
+                                                    [[['state', '=', 'paid']]],
+                                                    {'fields': fields})
+
+        # Mengambil ID dari data yang didapat
+        ids_to_update = [record['id'] for record in config_source]
+
+        # Memperbarui is_integrated menjadi True untuk semua ID yang didapat
+        if ids_to_update:
+            # Loop through each ID to update
+            for order_id in ids_to_update:
+                try:
+                    update_result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'pos.order', 'action_pos_order_invoice',
+                                                                [[order_id]])
+
+                    if update_result:
+                        print(f"Update successful for ID: {order_id}")
+                    else:
+                        print(f"Failed to update record with ID: {order_id}")
+                except Exception as e:
+                    print(f"Error updating record with ID {order_id}: {e}")
+        else:
+            print("No records found to update.")
+
 
     def create_data_transaksi(self, model, record, modul):
         try:
