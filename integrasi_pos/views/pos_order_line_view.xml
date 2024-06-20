@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Inherit the view for pos.order.line -->
+        <record id="view_pos_order_line_form" model="ir.ui.view">
+            <field name="name">pos.order.line.form.inherit</field>
+            <field name="model">pos.order.line</field>
+            <field name="inherit_id" ref="point_of_sale.view_pos_order_line_form"/>
+            <field name="arch" type="xml">
+                <!-- Locate the field tax_ids_after_fiscal_position and modify its readonly attribute -->
+                <field name="tax_ids_after_fiscal_position" position="attributes">
+                    <attribute name="readonly">0</attribute>
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,10 @@
+<odoo>
+    <data>
+        <template id="assets_backend" name="pos_custom_invoice assets" inherit_id="point_of_sale._assets_pos">
+            <xpath expr="." position="inside">
+                <script type="text/javascript" src="/integrasi_pos/static/src/js/custom_pos.js"></script>
+                <t t-call="integrasi_pos.custom_pos_templates"/>
+            </xpath>
+        </template>
+    </data>
+</odoo>

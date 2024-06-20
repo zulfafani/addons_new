@@ -22,22 +22,40 @@
     # for the full list
 
     # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['base', 'sale', 'stock', 'point_of_sale', 'contacts', 'account'],  # ['base', 'sale', 'mrp'],
+    'depends': ['base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty'],  # ['base', 'sale', 'mrp'],
 
     # always loaded
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_view.xml',
-        'views/log_code_runtime_view.xml',
         'views/log_note_view.xml',
         'views/log_menu.xml',
         'views/stock_picking_view.xml',
-        'views/pos_session_view.xml',\
+        'views/pos_session_view.xml',
         'views/pos_order_view.xml',
-    ],
+        'views/master_warehouse_view.xml',
+        'views/stock_move_line_view.xml',
+        'views/pos_config_view.xml',
+        'data/sequence.xml',
+        'views/loyalty_program_view.xml',
 
+    ],
+    'assets': {
+        'point_of_sale._assets_pos': [
+            # 'dev_pos/static/src/css/pop_up.css',
+            # 'dev_pos/static/src/xml/button.xml',
+            # # 'dev_pos/static/src/xml/button_screen.xml',
+            # 'dev_pos/static/src/js/button.js',
+            'integrasi_pos/static/src/js/custom_invoice.js',
+            'integrasi_pos/static/src/js/get_customer.js',
+            'integrasi_pos/static/src/js/disable_download.js',
+            'integrasi_pos/static/src/js/automated_print.js',
+            # 'dev_pos/static/src/js/pop_up_card.js',
+        ],
+    },
+    'license': 'LGPL-3',
     'installable': True,
-    'application': True,
-    'auto_install': False
+    'auto_install': False,
+    'application': False,
 }
