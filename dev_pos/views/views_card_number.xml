@@ -1,0 +1,55 @@
+<odoo>
+  <data>
+
+    <record id="view_card_number_tree" model="ir.ui.view">
+        <field name="name">card.number.tree</field> <!-- Perbaikan: Tambahkan tanda kutip -->
+        <field name="model">card.number</field>
+        <field name="type">tree</field>
+        <field name="priority" eval="8"/>
+        <field name="arch" type="xml">
+            <tree string="Table Card Number Tree" create="True">
+                <field name="name"/>
+                <field name="card_num"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- form view -->
+    <record model="ir.ui.view" id="view_card_number_form">
+      <field name="name">card.number.form</field>
+      <field name="model">card.number</field>
+      <field name="arch" type="xml">
+        <form create="True">
+            <sheet>
+                <group>
+                    <group string="Card Member">
+                        <field name="name"/>
+                        <field name="card_num"/> 
+                    </group>
+                </group>
+            </sheet>          
+        </form>
+      </field>
+    </record>
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="action_card_number">
+      <field name="name">card_number_window</field>
+      <field name="res_model">card.number</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Root Menu -->
+    <menuitem id="menu_card_num" name="Card Number" sequence="1"/>
+
+    <!-- Child Menu -->
+    <menuitem
+        id="card_num_menu"
+        name="Card Number"
+        action="action_card_number"
+        parent="menu_card_num"
+        sequence="1"/>
+
+  </data>
+</odoo>

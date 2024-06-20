@@ -12,6 +12,9 @@
             <field name="vit_sync_date" string="Sync Date"/>
             <field name="vit_sync_status" string="Sync Status"/>
             <field name="vit_sync_desc" string="Sync Description"/>
+            <field name="vit_start_sync" string="Start Sync"/>
+            <field name="vit_end_sync" string="End Sync"/>
+            <field name="vit_duration" string="Duration"/>
         </tree>
       </field>
     </record>
