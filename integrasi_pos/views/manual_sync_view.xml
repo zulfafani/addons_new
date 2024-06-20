@@ -1,0 +1,50 @@
+<odoo>
+  <data>
+    <!-- form view -->
+    <record model="ir.ui.view" id="view_manual_sync_form">
+      <field name="name">manual.sync.form</field>
+      <field name="model">manual.sync</field>
+      <field name="arch" type="xml">
+        <form create="false">
+            <header>
+                <field name="treshold"/>    
+                <field name="date_from"/>    
+                <field name="date_to"/> 
+                <field name="sync_model"/> 
+            </header>
+            <sheet>
+                <group>
+                    <group>
+                        <field name="by_doc"/>          
+                    </group>
+                    <group>
+                        <button string="Search" type="object" class="oe_highlight"/>
+                        <button string="Sync" type="object" class="oe_highlight"/>    
+                    </group>
+                </group>
+            </sheet>          
+        </form>
+      </field>
+    </record>
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="action_synchronize">
+      <field name="name">manual_sync_window</field>
+      <field name="res_model">manual.sync</field>
+      <field name="view_mode">form</field>
+    </record>
+
+    <!-- Root Menu -->
+    <menuitem id="menu_sync" name="Synchronization" sequence="1"/>
+
+    <!-- Child Menu -->
+    <menuitem
+        id="synchronize_menu"
+        name="Manual Integration"
+        action="action_synchronize"
+        parent="menu_sync"
+        sequence="1"/>
+
+  </data>
+</odoo>

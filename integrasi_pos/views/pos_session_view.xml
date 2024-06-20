@@ -7,8 +7,11 @@
       <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
       <field name="arch" type="xml">
         <xpath expr="//field[@name='config_id']" position="after">
-            <field name="is_integrated"/>
+            <field name="is_updated"/>
             <field name="name_session_pos"/>
+        </xpath>
+        <xpath expr="//button[@name='show_journal_items']" position="attributes">
+          <attribute name="invisible">0</attribute>
         </xpath>
       </field>
     </record>

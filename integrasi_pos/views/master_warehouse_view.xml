@@ -1,0 +1,47 @@
+<odoo>
+  <data>
+
+    <record id="view_master_warehouse_tree" model="ir.ui.view">
+        <field name="name">master.warehouse.tree</field>
+        <field name="model">master.warehouse</field>
+        <field name="type">tree</field>
+        <field name="priority" eval="8"/>
+        <field name="arch" type="xml">
+            <tree string="List Warehouse">
+                <field name="warehouse_name"/>    
+                <field name="warehouse_code"/>   
+            </tree>
+        </field>
+    </record>
+    
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="action_master_warehouse">
+      <field name="name">List Warehouse</field>
+      <field name="res_model">master.warehouse</field>
+      <field name="view_mode">tree</field>
+    </record>
+
+    <!-- <record model="ir.rule" id="record_restricted_company_rule">
+        <field name="name">Restricted Record: multi-company</field>
+        <field name="model_id" ref="model_log_note_error"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">
+            [('company_id', 'in', company_ids)]
+        </field>
+    </record> -->
+
+    <!-- Root Menu -->
+    <menuitem id="menu_master_warehouse" name="List Warehouse" sequence="1"/>
+
+    <!-- Child Menu -->
+    <menuitem
+        id="master_warehouse_menu"
+        name="List Warehouse"
+        action="action_master_warehouse"
+        parent="menu_master_warehouse"
+        sequence="1"/>
+
+  </data>
+</odoo>

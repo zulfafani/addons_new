@@ -11,3 +11,6 @@ class LogNote(models.Model):
     vit_sync_date = fields.Datetime(string='Sync Date')
     vit_sync_status = fields.Char(string='Sync Status')
     vit_sync_desc = fields.Text(string='Sync Description')
+    vit_start_sync = fields.Datetime(string='Start Sync')
+    vit_end_sync = fields.Datetime(string='End Sync')
+    vit_duration = fields.Char(string='Duration')
