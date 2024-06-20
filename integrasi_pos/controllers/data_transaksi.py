@@ -16,10 +16,18 @@ class DataTransaksi:
     def transfer_transaksi(self, model_name, fields, description):
         # Ambil data dari sumber
         transaksi = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                self.source_client.uid, self.source_client.password,
-                                                model_name, 'search_read',
-                                                [[['move_type', '=', 'out_invoice'], ['state', '=', 'posted'], ['payment_state', '=', 'paid']]],
-                                                {'fields': fields})
+                                             self.source_client.uid, self.source_client.password,
+                                             model_name, 'search_read',
+                                             [[
+                                                 '|',
+                                                 ['move_type', '=', 'out_invoice'],
+                                                 ['move_type', '=', 'out_refund'],
+                                                 ['state', '=', 'posted'],
+                                                 '|',
+                                                 ['payment_state', '=', 'paid'],
+                                                 ['payment_state', '=', 'reversed']
+                                             ]],
+                                             {'fields': fields})
 
         if not transaksi:
             print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
@@ -62,6 +70,9 @@ class DataTransaksi:
 
             if not customers_target:
                 print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                message = f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target."
+                self.set_log_mc.create_log_note_failed(record, 'Invoice', message)
+                self.set_log_ss.create_log_note_failed(record, 'Invoice', message)
                 continue
 
             customer_target_id = customers_target[0]['id']
@@ -161,7 +172,6 @@ class DataTransaksi:
                     print(message)
                     self.set_log_mc.create_log_note_failed(record, 'Invoice', message)
                     self.set_log_ss.create_log_note_failed(record, 'Invoice', message)
-                    continue
 
                 invoice_data = {
                     'partner_id': customer_target_id,
@@ -170,7 +180,9 @@ class DataTransaksi:
                     'invoice_date_due': record.get('invoice_date_due', False),
                     'payment_reference': record.get('name', False),
                     'ref': record.get('ref', False),
-                    'move_type': 'out_invoice',
+                    # 'state': record.get('state', False),
+                    'payment_state': record.get('payment_state', False),
+                    'move_type': record.get('move_type'),
                     'invoice_line_ids': invoice_line_ids,
                 }
 
@@ -411,7 +423,6 @@ class DataTransaksi:
                 except Exception as e:
                     print(f"Gagal membuat atau memposting Pos Order baru: {e}")
 
-
     def transfer_pos_order_invoice(self, model_name, fields, description):
         # Ambil data dari sumber
         transaksi_posorder_invoice = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
@@ -499,10 +510,10 @@ class DataTransaksi:
 
             if not existing_pos_order_invoice:
                 pos_order_invoice_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                    self.source_client.uid, self.source_client.password,
-                                                                    'pos.order.line', 'search_read',
-                                                                    [[['order_id', '=', record['id']]]],
-                                                                    {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit', 'tax_ids_after_fiscal_position', 'discount', 'price_subtotal', 'price_subtotal_incl']})
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'pos.order.line', 'search_read',
+                                                                        [[['order_id', '=', record['id']]]],
+                                                                        {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit', 'tax_ids_after_fiscal_position', 'discount', 'price_subtotal', 'price_subtotal_incl']})
                 pos_order_invoice_line_ids = []
                 pos_order_payment_ids = []
                 missing_products = []
@@ -510,69 +521,87 @@ class DataTransaksi:
 
                 # Check if all products exist in the target database
                 for line in pos_order_invoice_lines:
-                    product_id = line.get('product_id')[0]  # product_id is a list [id, name], we need the id
+                    product_id_info = line.get('product_id')  # product_id is a list [id, name]
 
-                    product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                'product.product', 'search_read',
-                                                                [[['id', '=', product_id]]],
-                                                                {'fields': ['default_code', 'taxes_id'], 'limit': 1})
+                    if product_id_info:
+                        product_id = product_id_info[0]  # Get the id part
 
-                    default_code = product_source[0]['default_code']
-                    taxes_ids = product_source[0].get('taxes_id', [])
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code', 'taxes_id'], 'limit': 1})
 
-                    product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                self.target_client.uid, self.target_client.password,
-                                                                'product.product', 'search_read',
-                                                                [[['default_code', '=', default_code]]],
-                                                                {'fields': ['id'], 'limit': 1})
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+                            taxes_ids = product_source[0].get('taxes_id', [])
 
-                    product_target_id = product_target[0]['id']
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
 
-                    # Prepare tax_ids_after_fiscal_position
+                            if product_target:
+                                product_target_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    tax_source = self.source_client.call_odoo(
+                        'object', 'execute_kw', self.source_client.db,
+                        self.source_client.uid, self.source_client.password,
+                        'account.tax', 'search_read',
+                        [[]],
+                        {'fields': ['name']}
+                    )
+
                     tax_ids = []
-                    for tax_id in taxes_ids:
-                        tax_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                'account.tax', 'search_read',
-                                                                [[['id', '=', tax_id]]],
-                                                                {'fields': ['name']})
+                    for rec in tax_source:
+                        name = rec.get('name')
 
-                        if tax_source:
-                            tax_name = tax_source[0]['name']
+                        tax_target = self.target_client.call_odoo(
+                            'object', 'execute_kw', self.target_client.db,
+                            self.target_client.uid, self.target_client.password,
+                            'account.tax', 'search_read',
+                            [[['name', '=', name]]],
+                            {'fields': ['id']}
+                        )
 
-                            tax_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                    self.target_client.uid, self.target_client.password,
-                                                                    'account.tax', 'search_read',
-                                                                    [[['name', '=', tax_name]]],
-                                                                    {'fields': ['id'], 'limit': 1})
+                        if tax_target:  # Check if the list is not empty
+                            tax_ids.append(tax_target[0]['id'])
+                            print("Menemukan Pajak")
+                        else:
+                            print("Pajak Tidak Ditemukan")
 
-                            if tax_target:
-                                tax_ids.append(([tax_target[0]['id']]))
-
-                        pos_order_line_data = {
-                            'product_id': product_target_id,
-                            'discount': line.get('discount'),
-                            'full_product_name': line.get('full_product_name'),
-                            'qty': line.get('qty'),
-                            'price_unit': line.get('price_unit'),
-                            'price_subtotal': line.get('price_subtotal'),
-                            'price_subtotal_incl': line.get('price_subtotal_incl'),
-                            'tax_ids_after_fiscal_position': tax_ids,
-                        }
-                        pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
+                    pos_order_line_data = {
+                        'product_id': product_target_id,
+                        'discount': line.get('discount'),
+                        'full_product_name': line.get('full_product_name'),
+                        'qty': line.get('qty'),
+                        'price_unit': line.get('price_unit'),
+                        'price_subtotal': line.get('price_subtotal'),
+                        'price_subtotal_incl': line.get('price_subtotal_incl'),
+                        'tax_ids': [(6, 0, tax_ids)],
+                    }
+                    pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
 
                 # If there are missing products, log the error and continue with the next record
                 if missing_products:
                     missing_products_str = ", ".join(missing_products)
-                    message = f"Invoice dibatalkan karena produk tidak terdaftar: {missing_products_str}"
+                    message = f"Terdapat produk tidak aktif dalam invoice: {missing_products_str}"
                     print(message)
                     self.set_log_mc.create_log_note_failed(record, 'Invoice', message)
                     self.set_log_ss.create_log_note_failed(record, 'Invoice', message)
-                    continue
-
-                # Assume each line has a fixed tax rate of 10% for demonstration purposes
-                # total_tax += line.get('price_unit') * line.get('qty') * 0.10
 
                 # Ambil data pembayaran dari sumber
                 pos_order_payments = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
@@ -636,11 +665,11 @@ class DataTransaksi:
                     'amount_paid': amount_paid,
                     'amount_return': record.get('amount_return'),
                     'tracking_number': record.get('tracking_number'),
+                    'margin': record.get('margin'),
+                    'state': record.get('state'),
                     # 'is_integrated': True,
                     'lines': pos_order_invoice_line_ids,
                     'payment_ids': pos_order_payment_ids,
-                    'margin': record.get('margin'),
-                    # 'state': 'paid',
                 }
 
                 new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
@@ -653,17 +682,29 @@ class DataTransaksi:
                 self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                             self.target_client.uid, self.target_client.password,
                                             'pos.order', 'action_pos_order_invoice',
-                                            [new_pos_order_id])
+                                            [[new_pos_order_id]])
+                print(f"Tombol action_pos_order_invoice telah dijalankan untuk Pos Order ID: {new_pos_order_id}")
 
-                print(f"Pos Order baru telah dibuatkan invoice ID: {new_pos_order_id}")
+                # if amount_paid < 0:
+                #     self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                #                                 self.target_client.uid, self.target_client.password,
+                #                                 'pos.order', 'action_credit_note_invoice',
+                #                                 [[new_pos_order_id]])
+                #     print(f"Tombol action_credit_note_invoice telah dijalankan untuk Pos Order ID: {new_pos_order_id}")
+                # else:
 
+                # # Update the tax IDs in the target database
+                # self.target_client.call_odoo(
+                #     'object', 'execute_kw', self.target_client.db, self.target_client.uid, self.target_client.password,
+                #     'pos.order.line', 'write', [[new_pos_order_id], {'tax_ids_after_fiscal_position': [(6, 0, [3])]}]
+                # )
 
     def transfer_pos_order_session(self, model_name, fields, description):
         # Ambil data dari sumber
         transaksi_posorder_session = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
                                                         self.source_client.uid, self.source_client.password,
                                                         model_name, 'search_read',
-                                                        [[['state', '=', 'opened']]],
+                                                        [[]],
                                                         {'fields': fields})
 
         if not transaksi_posorder_session:
@@ -794,6 +835,1539 @@ class DataTransaksi:
             except Exception as e:
                 print(f"Terjadi kesalahan saat membuat pos order baru: {e}")
 
+    def transfer_internal_transfer(self, model_name, fields, description):
+        # Ambil data dari sumber
+        transaksi_internal_transfer = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        model_name, 'search_read',
+                                                        [[['picking_type_id.name', '=', 'Internal Transfers'], ['is_integrated', '=', False], ['state', '=', 'done']]],
+                                                        {'fields': fields})
+
+        if not transaksi_internal_transfer:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in transaksi_internal_transfer:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_internal_transfer_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'stock.picking', 'search_read',
+                                                                        [[['origin', '=', record.get('origin')], ['is_integrated', '=', True], ['picking_type_id.name', '=', 'Internal Transfers']]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+            if not existing_internal_transfer_inventory:
+                #Ambil invoice line items dari sumber
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_dest_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name_dest]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                internal_transfer_inventory_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'stock.move', 'search_read',
+                                                                        [[['picking_id', '=', record['id']]]],
+                                                                        {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                internal_transfer_inventory_line_ids = []
+                for line in internal_transfer_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    internal_transfer_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    internal_transfer_inventory_line_ids.append((0, 0, internal_transfer_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam Goods Receipt: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, 'Internal Transfer', message)
+                        self.set_log_ss.create_log_note_failed(record, 'Internal Transfer', message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                picking_type_name = 'Internal Transfers'
+
+                # Cari tipe picking di target_client berdasarkan nama
+                picking_types = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.picking.type', 'search_read',
+                                                            [[['name', '=', picking_type_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not picking_types:
+                    print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                    continue
+
+                picking_type_id = picking_types[0]['id']
+
+                internal_transfer_data = {
+                    # 'name': record.get('name', False) + ' - ' + datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S"),
+                    'partner_id': customer_target_id,
+                    'scheduled_date': record.get('scheduled_date', False),
+                    'date_done': record.get('date_done', False),
+                    'origin': record.get('name', False),
+                    'location_id': location_target_id,
+                    'location_dest_id': location_dest_target_id,
+                    'picking_type_id': picking_type_id,
+                    'move_ids_without_package': internal_transfer_inventory_line_ids,
+                }
+
+                try:
+                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [internal_transfer_data])
+                    print(f"Internal Transfer baru telah dibuat dengan ID: {new_pos_order_id}")
+
+                    # Post the new invoice
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password,
+                                                'stock.picking', 'button_validate',
+                                                [new_pos_order_id])
+                    print(f"Internal Transfer dengan ID: {new_pos_order_id} telah diposting.")
+
+                    self.source_client.call_odoo(
+                        'object', 'execute_kw', self.source_client.db,
+                        self.source_client.uid, self.source_client.password,
+                        'stock.picking', 'write',
+                        [[record['id']], {'is_integrated': True}]
+                    )
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting Internal Transfer baru: {e}")
+
+    def transfer_TSOutTsIn(self, model_name, fields, description):
+        # Ambil data dari sumber
+        Ts_Out_data_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        model_name, 'search_read',
+                                                        [[['picking_type_id.name', '=', 'TS Out'], ['is_integrated', '=', False], ['state', '=', 'done']]],
+                                                        {'fields': fields})
+
+        if not Ts_Out_data_source:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in Ts_Out_data_source:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_internal_transfer_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                                self.target_client.uid, self.target_client.password,
+                                                                                'stock.picking', 'search_read',
+                                                                                [[['vit_trxid', '=', record.get('name')], ['is_integrated', '=', True], '|', ['picking_type_id.name', '=', 'TS In'], ['picking_type_id.name', '=', 'TS Out']]],
+                                                                                {'fields': ['id'], 'limit': 1})
+
+            if not existing_internal_transfer_inventory:
+                #Ambil invoice line items dari sumber
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['complete_name', '=', complete_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'stock.location', 'search_read',
+                                                                    [[['id', '=', location_dest_id]]],
+                                                                    {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.location', 'search_read',
+                                                                    [[['complete_name', '=', complete_name_dest]]],
+                                                                    {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                internal_transfer_inventory_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                                self.source_client.uid, self.source_client.password,
+                                                                                'stock.move', 'search_read',
+                                                                                [[['picking_id', '=', record['id']]]],
+                                                                                {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                Ts_in_source_line_ids = []
+                internal_transfer_inventory_line_ids = []
+                for line in internal_transfer_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    internal_transfer_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    internal_transfer_inventory_line_ids.append((0, 0, internal_transfer_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam TS Out/TS In: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, "TS Out/In", message)
+                        self.set_log_ss.create_log_note_failed(record, "TS Out/In", message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                for picking_type_name in ['TS Out', 'TS In']:
+                    # Cari tipe picking di target_client berdasarkan nama
+                    picking_types = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.picking.type', 'search_read',
+                                                                [[['name', '=', picking_type_name]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                    if not picking_types:
+                        print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                        continue
+
+                    picking_type_id = picking_types[0]['id']
+
+                    internal_transfer_data = {
+                        'partner_id': customer_target_id,
+                        'scheduled_date': record.get('scheduled_date', False),
+                        'date_done': record.get('date_done', False),
+                        'origin': record.get('name', False),
+                        'location_id': location_target_id,
+                        'location_dest_id': location_dest_target_id,
+                        'picking_type_id': picking_type_id,
+                        'is_integrated': True,
+                        'vit_trxid': record.get('name', False),
+                        'move_ids_without_package': internal_transfer_inventory_line_ids,
+                    }
+
+                    try:
+                        if picking_type_name == 'TS Out':
+                            new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                            self.target_client.uid, self.target_client.password,
+                                                                            'stock.picking', 'create',
+                                                                            [internal_transfer_data])
+                            print(f"TS Out dan TS In baru telah dibuat di target dengan ID: {new_pos_order_id}")
+
+                            # Post the new invoice
+                            self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        'stock.picking', 'button_validate',
+                                                        [new_pos_order_id])
+                            print(f"TS out dengan ID: {new_pos_order_id} telah diposting.")
+
+                            self.source_client.call_odoo(
+                                'object', 'execute_kw', self.source_client.db,
+                                self.source_client.uid, self.source_client.password,
+                                'stock.picking', 'write',
+                                [[record['id']], {'is_integrated': True}]
+                            )
+                        else:
+                            new_ts_in_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                            self.target_client.uid, self.target_client.password,
+                                                                            'stock.picking', 'create',
+                                                                            [internal_transfer_data])
+                            print(f"TS In baru telah dibuat di target dengan ID: {new_ts_in_target}")
+
+                            self.source_client.call_odoo(
+                                'object', 'execute_kw', self.source_client.db,
+                                self.source_client.uid, self.source_client.password,
+                                'stock.picking', 'write',
+                                [[record['id']], {'is_integrated': True}]
+                            )
+                    except Exception as e:
+                        print(f"Gagal membuat atau memposting TS In di Source baru: {e}")
+                        
+        TS_In_data_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        'stock.picking', 'search_read',
+                                                        [[['picking_type_id.name', '=', 'TS In'], ['is_integrated', '=', True], ['state', '=', 'assigned']]],
+                                                        {'fields': ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package']})
+        
+        if not TS_In_data_target:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in TS_In_data_target:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_internal_transfer_inventory = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                                self.source_client.uid, self.source_client.password,
+                                                                                'stock.picking', 'search_read',
+                                                                                [[['vit_trxid', '=', record.get('name')], ['is_integrated', '=', True], ['picking_type_id.name', '=', 'TS In']]],
+                                                                                {'fields': ['id'], 'limit': 1})
+
+            if not existing_internal_transfer_inventory:
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['complete_name', '=', complete_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.location', 'search_read',
+                                                                    [[['id', '=', location_dest_id]]],
+                                                                    {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'stock.location', 'search_read',
+                                                                    [[['complete_name', '=', complete_name_dest]]],
+                                                                    {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                internal_transfer_inventory_lines = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                                self.target_client.uid, self.target_client.password,
+                                                                                'stock.move', 'search_read',
+                                                                                [[['picking_id', '=', record['id']]]],
+                                                                                {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                Ts_in_source_line_ids = []
+                internal_transfer_inventory_line_ids = []
+                for line in internal_transfer_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    internal_transfer_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    internal_transfer_inventory_line_ids.append((0, 0, internal_transfer_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam TS Out/TS In: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, "TS Out/In", message)
+                        self.set_log_ss.create_log_note_failed(record, "TS Out/In", message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                picking_type_name = 'TS In'
+                # Cari tipe picking di target_client berdasarkan nama
+                picking_types = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.picking.type', 'search_read',
+                                                            [[['name', '=', picking_type_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not picking_types:
+                    print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                    continue
+
+                picking_type_id = picking_types[0]['id']
+
+                internal_transfer_data = {
+                    'partner_id': customer_target_id,
+                    'scheduled_date': record.get('scheduled_date', False),
+                    'date_done': record.get('date_done', False),
+                    'origin': record.get('name', False),
+                    'location_id': location_target_id,
+                    'location_dest_id': location_dest_target_id,
+                    'picking_type_id': picking_type_id,
+                    'is_integrated': True,
+                    'vit_trxid': record.get('name', False),
+                    'move_ids_without_package': internal_transfer_inventory_line_ids,
+                }
+
+                try:
+                    new_pos_order_id = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [internal_transfer_data])
+                    print(f"TS In baru telah dibuat di source dengan ID: {new_pos_order_id}")
+
+                    # Setelah transaksi dibuat, cek statusnya
+                    picking_status = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                self.source_client.uid, self.source_client.password,
+                                                                'stock.picking', 'search_read',
+                                                                [[['id', '=', new_pos_order_id]]],
+                                                                {'fields': ['state'], 'limit': 1})
+
+                    if picking_status and picking_status[0]['state'] == 'done':
+                        # Lakukan button_validate() di sistem target untuk transaksi yang sesuai
+                        for record in TS_In_data_target:
+                            if record['name'] == internal_transfer_data['vit_trxid']:
+                                validate_result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                            self.target_client.uid, self.target_client.password,
+                                                                            'stock.picking', 'button_validate',
+                                                                            [[record['id']]])
+
+                                print(f"TS In di target dengan ID {record['id']} telah divalidasi.")
+
+                    # Update status is_integrated di sistem target
+                    self.target_client.call_odoo(
+                        'object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid, self.target_client.password,
+                        'stock.picking', 'write',
+                        [[record['id']], {'is_integrated': True}]
+                    )
+
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting TS In di Source baru: {e}")
+
+    def transfer_goods_receipt(self, model_name, fields, description):
+        # Ambil data dari sumber
+        transaksi_goods_receipt = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        model_name, 'search_read',
+                                                        [[['picking_type_id.name', '=', 'Goods Receipts'], ['is_integrated', '=', False], ['state', '=', 'done']]],
+                                                        {'fields': fields})
+
+        if not transaksi_goods_receipt:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in transaksi_goods_receipt:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_goods_receipt_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'stock.picking', 'search_read',
+                                                                        [[['origin', '=', record.get('origin')], ['is_integrated', '=', True], ['picking_type_id.name', '=', 'Goods Receipts']]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+            if not existing_goods_receipt_inventory:
+                #Ambil invoice line items dari sumber
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_dest_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name_dest]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                goods_receipt_inventory_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'stock.move', 'search_read',
+                                                                        [[['picking_id', '=', record['id']]]],
+                                                                        {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                goods_receipt_inventory_line_ids = []
+                for line in goods_receipt_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    goods_receipt_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    goods_receipt_inventory_line_ids.append((0, 0, goods_receipt_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam Goods Receipt: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, 'Goods Receipt', message)
+                        self.set_log_ss.create_log_note_failed(record, 'Goods Receipt', message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                picking_type_name = 'Goods Receipt'
+
+                # Cari tipe picking di target_client berdasarkan nama
+                picking_types = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.picking.type', 'search_read',
+                                                            [[['name', '=', picking_type_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not picking_types:
+                    print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                    continue
+
+                picking_type_id = picking_types[0]['id']
+
+                internal_transfer_data = {
+                    # 'name': record.get('name', False) + ' - ' + datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S"),
+                    'partner_id': customer_target_id,
+                    'scheduled_date': record.get('scheduled_date', False),
+                    'date_done': record.get('date_done', False),
+                    'origin': record.get('name', False),
+                    'location_id': location_target_id,
+                    'location_dest_id': location_dest_target_id,
+                    'picking_type_id': picking_type_id,
+                    'move_ids_without_package': goods_receipt_inventory_line_ids,
+                }
+
+                try:
+                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [internal_transfer_data])
+                    print(f"Goods Receipt baru telah dibuat dengan ID: {new_pos_order_id}")
+
+                    # Post the new invoice
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password,
+                                                'stock.picking', 'button_validate',
+                                                [new_pos_order_id])
+                    print(f"Goods Receipt dengan ID: {new_pos_order_id} telah diposting.")
+
+                    self.source_client.call_odoo(
+                        'object', 'execute_kw', self.source_client.db,
+                        self.source_client.uid, self.source_client.password,
+                        'stock.picking', 'write',
+                        [[record['id']], {'is_integrated': True}]
+                    )
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting Goods Receipt baru: {e}")
+
+    def transfer_goods_receipt(self, model_name, fields, description):
+        # Ambil data dari sumber
+        transaksi_goods_receipt = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        model_name, 'search_read',
+                                                        [[['picking_type_id.name', '=', 'Goods Receipts'], ['is_integrated', '=', False], ['state', '=', 'done']]],
+                                                        {'fields': fields})
+
+        if not transaksi_goods_receipt:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in transaksi_goods_receipt:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_goods_receipt_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'stock.picking', 'search_read',
+                                                                        [[['origin', '=', record.get('origin')], ['is_integrated', '=', True], ['picking_type_id.name', '=', 'Goods Receipts']]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+            if not existing_goods_receipt_inventory:
+                #Ambil invoice line items dari sumber
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_dest_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name_dest]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                goods_receipt_inventory_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'stock.move', 'search_read',
+                                                                        [[['picking_id', '=', record['id']]]],
+                                                                        {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                goods_receipt_inventory_line_ids = []
+                for line in goods_receipt_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    goods_receipt_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    goods_receipt_inventory_line_ids.append((0, 0, goods_receipt_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam Goods Receipt: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, 'Goods Receipt', message)
+                        self.set_log_ss.create_log_note_failed(record, 'Goods Receipt', message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                picking_type_name = 'Goods Receipt'
+
+                # Cari tipe picking di target_client berdasarkan nama
+                picking_types = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.picking.type', 'search_read',
+                                                            [[['name', '=', picking_type_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not picking_types:
+                    print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                    continue
+
+                picking_type_id = picking_types[0]['id']
+
+                internal_transfer_data = {
+                    # 'name': record.get('name', False) + ' - ' + datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S"),
+                    'partner_id': customer_target_id,
+                    'scheduled_date': record.get('scheduled_date', False),
+                    'date_done': record.get('date_done', False),
+                    'origin': record.get('name', False),
+                    'location_id': location_target_id,
+                    'location_dest_id': location_dest_target_id,
+                    'picking_type_id': picking_type_id,
+                    'move_ids_without_package': goods_receipt_inventory_line_ids,
+                }
+
+                try:
+                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [internal_transfer_data])
+                    print(f"Goods Receipt baru telah dibuat dengan ID: {new_pos_order_id}")
+
+                    # Post the new invoice
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password,
+                                                'stock.picking', 'button_validate',
+                                                [new_pos_order_id])
+                    print(f"Goods Receipt dengan ID: {new_pos_order_id} telah diposting.")
+
+                    self.source_client.call_odoo(
+                        'object', 'execute_kw', self.source_client.db,
+                        self.source_client.uid, self.source_client.password,
+                        'stock.picking', 'write',
+                        [[record['id']], {'is_integrated': True}]
+                    )
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting Goods Receipt baru: {e}")
+
+    def transfer_goods_issue(self, model_name, fields, description):
+        # Ambil data dari sumber
+        transaksi_goods_issue = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        model_name, 'search_read',
+                                                        [[['picking_type_id.name', '=', 'Goods Issue'], ['is_integrated', '=', False], ['state', '=', 'done']]],
+                                                        {'fields': fields})
+
+        if not transaksi_goods_issue:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        # Kirim data ke target
+        for record in transaksi_goods_issue:
+            partner_id = record.get('partner_id')
+            if not partner_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+                continue
+
+            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+
+            # Cari customer di target berdasarkan partner_id dari sumber
+            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'res.partner', 'search_read',
+                                                        [[['id', '=', partner_id]]],
+                                                        {'fields': ['customer_code'], 'limit': 1})
+
+            if not customer_source or 'customer_code' not in customer_source[0]:
+                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+                continue
+
+            customer_code = customer_source[0]['customer_code']
+
+            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'res.partner', 'search_read',
+                                                            [[['customer_code', '=', customer_code]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not customers_target:
+                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+                continue
+
+            customer_target_id = customers_target[0]['id']
+
+            existing_goods_issue_inventory = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'stock.picking', 'search_read',
+                                                                        [[['origin', '=', record.get('origin')], ['is_integrated', '=', True], ['picking_type_id.name', '=', 'Goods Issue']]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+            if not existing_goods_issue_inventory:
+                #Ambil invoice line items dari sumber
+                location_id = record.get('location_id')
+                if not location_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                    continue
+
+                location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+                location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_source or 'complete_name' not in location_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                    continue
+
+                complete_name = location_source[0]['complete_name']
+
+                location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                    continue
+
+                location_target_id = location_target[0]['id']
+
+                location_dest_id = record.get('location_dest_id')
+                if not location_dest_id:
+                    print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_dest_id'.")
+                    continue
+
+                location_dest_id = location_dest_id[0] if isinstance(location_dest_id, list) else location_dest_id
+
+                location_dest_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                            self.source_client.uid, self.source_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['id', '=', location_dest_id]]],
+                                                            {'fields': ['complete_name'], 'limit': 1})
+                
+                if not location_dest_source or 'complete_name' not in location_dest_source[0]:
+                    print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_dest_id} di database sumber.")
+                    continue
+
+                complete_name_dest = location_dest_source[0]['complete_name']
+
+                location_dest_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                self.target_client.uid, self.target_client.password,
+                                                                'stock.location', 'search_read',
+                                                                [[['complete_name', '=', complete_name_dest]]],
+                                                                {'fields': ['id'], 'limit': 1})
+
+                if not location_dest_target:
+                    print(f"Tidak dapat menemukan 'complete_name' {complete_name_dest} di database target.")
+                    continue
+
+                location_dest_target_id = location_dest_target[0]['id']
+                
+                goods_issue_inventory_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'stock.move', 'search_read',
+                                                                        [[['picking_id', '=', record['id']]]],
+                                                                        {'fields': ['product_id', 'product_uom_qty', 'quantity', 'name']})
+                missing_products = []
+                goods_issue_inventory_line_ids = []
+                for line in goods_issue_inventory_lines:
+                    product_id = line.get('product_id')
+                    if product_id:
+                        product_id = product_id[0]  # product_id is a list [id, name], we need the id
+
+                        # Get the default_code for the product in the source system
+                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                    self.source_client.uid, self.source_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['id', '=', product_id]]],
+                                                                    {'fields': ['default_code'], 'limit': 1})
+
+                        if product_source and 'default_code' in product_source[0]:
+                            default_code = product_source[0]['default_code']
+
+                            # Search for the product in the target system using default_code
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                        self.target_client.uid, self.target_client.password,
+                                                                        'product.product', 'search_read',
+                                                                        [[['default_code', '=', default_code]]],
+                                                                        {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_id = product_target[0]['id']
+                            else:
+                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+                                missing_products.append(default_code)
+                                continue
+                        else:
+                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                            return
+                    else:
+                        print(f"Line item tidak memiliki 'product_id'.")
+                        continue
+
+                    goods_issue_inventory_line_data = {
+                        'product_id': product_id,
+                        'product_uom_qty': line.get('product_uom_qty'),
+                        'name': line.get('name'),
+                        'quantity': line.get('quantity'),
+                        'location_dest_id': location_dest_target_id,
+                        'location_id': location_target_id
+                    }
+                    goods_issue_inventory_line_ids.append((0, 0, goods_issue_inventory_line_data))
+
+                    if missing_products:
+                        missing_products_str = ", ".join(missing_products)
+                        message = f"Terdapat produk tidak aktif dalam Goods Issue: {missing_products_str}"
+                        print(message)
+                        self.set_log_mc.create_log_note_failed(record, 'Goods Issue', message)
+                        self.set_log_ss.create_log_note_failed(record, 'Goods Issue', message)
+
+                # Nama tipe picking yang relevan (misalnya 'Receipts' untuk penerimaan barang)
+                picking_type_name = 'Goods Issue'
+
+                # Cari tipe picking di target_client berdasarkan nama
+                picking_types = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.picking.type', 'search_read',
+                                                            [[['name', '=', picking_type_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+                if not picking_types:
+                    print(f"Tidak dapat menemukan tipe picking dengan nama '{picking_type_name}' di database target.")
+                    continue
+
+                picking_type_id = picking_types[0]['id']
+
+                internal_transfer_data = {
+                    # 'name': record.get('name', False) + ' - ' + datetime.now(pytz.timezone('Asia/Jakarta')).strftime("%Y-%m-%d %H:%M:%S"),
+                    'partner_id': customer_target_id,
+                    'scheduled_date': record.get('scheduled_date', False),
+                    'date_done': record.get('date_done', False),
+                    'origin': record.get('name', False),
+                    'location_id': location_target_id,
+                    'location_dest_id': location_dest_target_id,
+                    'picking_type_id': picking_type_id,
+                    'move_ids_without_package': goods_issue_inventory_line_ids,
+                }
+
+                try:
+                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'stock.picking', 'create',
+                                                                    [internal_transfer_data])
+                    print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
+
+                    # Post the new invoice
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password,
+                                                'stock.picking', 'button_validate',
+                                                [new_pos_order_id])
+                    print(f"Goods Issue dengan ID: {new_pos_order_id} telah diposting.")
+
+                    self.source_client.call_odoo(
+                        'object', 'execute_kw', self.source_client.db,
+                        self.source_client.uid, self.source_client.password,
+                        'stock.picking', 'write',
+                        [[record['id']], {'is_integrated': True}]
+                    )
+                except Exception as e:
+                    print(f"Gagal membuat atau memposting Goods Issue baru: {e}")
+
+    def transfer_stock_adjustment(self, model_name, fields, description):
+        # Mendapatkan data stock adjustment dari sumber
+        transaksi_stock_adjustment = self.source_client.call_odoo(
+            'object', 'execute_kw', self.source_client.db,
+            self.source_client.uid, self.source_client.password,
+            model_name, 'search_read',
+            [[['reference', '=', 'Product Quantity Updated'], ['x_is_integrated', '=', False], ['state', '=', 'done']]],
+            {'fields': fields}
+        )
+
+        if not transaksi_stock_adjustment:
+            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+            return
+
+        new_product_list = []
+        for record in transaksi_stock_adjustment:
+            product_id = record.get('product_id')
+            if not product_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'product_id'.")
+                continue
+
+            product_id = product_id[0] if isinstance(product_id, list) else product_id
+
+            # Mendapatkan default_code produk dari sumber
+            product_source = self.source_client.call_odoo(
+                'object', 'execute_kw', self.source_client.db,
+                self.source_client.uid, self.source_client.password,
+                'product.product', 'search_read',
+                [[['id', '=', product_id]]],
+                {'fields': ['default_code'], 'limit': 1}
+            )
+
+            if not product_source or 'default_code' not in product_source[0]:
+                print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                continue
+
+            product_code = product_source[0]['default_code']
+
+            # Mendapatkan product_id di target berdasarkan default_code
+            product_target = self.target_client.call_odoo(
+                'object', 'execute_kw', self.target_client.db,
+                self.target_client.uid, self.target_client.password,
+                'product.product', 'search_read',
+                [[['default_code', '=', product_code]]],
+                {'fields': ['id'], 'limit': 1}
+            )
+
+            location_id = record.get('location_id')
+            if not location_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'location_id'.")
+                continue
+
+            location_id = location_id[0] if isinstance(location_id, list) else location_id
+
+            location_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'stock.location', 'search_read',
+                                                        [[['id', '=', location_id]]],
+                                                        {'fields': ['complete_name'], 'limit': 1})
+            
+            if not location_source or 'complete_name' not in location_source[0]:
+                print(f"Tidak dapat menemukan 'complete_name' untuk location_id {location_id} di database sumber.")
+                continue
+
+            complete_name = location_source[0]['complete_name']
+
+            location_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                            self.target_client.uid, self.target_client.password,
+                                                            'stock.location', 'search_read',
+                                                            [[['complete_name', '=', complete_name]]],
+                                                            {'fields': ['id'], 'limit': 1})
+
+            if not location_target:
+                print(f"Tidak dapat menemukan 'complete_name' {complete_name} di database target.")
+                continue
+
+            inventory_quantity = record.get('quantity')
+            location_target_id = location_target[0]['id']
+
+            if not product_target:
+                print(f"Tidak dapat menemukan product dengan 'default_code' {product_code} di database target.")
+                continue
+
+            product_target_id = product_target[0]['id']
+
+            # Mencari stock.quant yang sesuai di target
+            stock_quant_target = self.target_client.call_odoo(
+                'object', 'execute_kw', self.target_client.db,
+                self.target_client.uid, self.target_client.password,
+                'stock.quant', 'search_read',
+                [[['product_id', '=', product_target_id]]],
+                {'fields': ['id', 'inventory_quantity'], 'limit': 1}
+            )
+
+            if not stock_quant_target:
+                print(f"Tidak dapat menemukan stock.quant untuk product_id {product_target_id} di database target.")
+                new_stock_quant = self.target_client.call_odoo(
+                    'object', 'execute_kw', self.target_client.db,
+                    self.target_client.uid, self.target_client.password,
+                    'stock.quant', 'create',
+                    [{'product_id': product_target_id, 'inventory_quantity': inventory_quantity, 'location_id': location_target_id}]
+                )
+                self.target_client.call_odoo(
+                    'object', 'execute_kw', self.target_client.db,
+                    self.target_client.uid, self.target_client.password,
+                    'stock.quant', 'action_apply_inventory',
+                    [new_stock_quant]
+                )
+                print(f"Produk dengan default_code {product_code} telah ditambahkan ke stock.quant dengan ID {new_stock_quant}.")
+                continue
+
+            stock_quant_id = stock_quant_target[0]['id']
+
+            # Update inventory_quantity di stock.quant
+            self.target_client.call_odoo(
+                'object', 'execute_kw', self.target_client.db,
+                self.target_client.uid, self.target_client.password,
+                'stock.quant', 'write',
+                [[stock_quant_id], {'inventory_quantity': inventory_quantity}]
+            )
+
+            print(f"Inventory quantity untuk stock.quant ID {stock_quant_id} telah diperbarui menjadi {inventory_quantity}.")
+
+            # Menandai transaksi di sumber sebagai telah diintegrasikan
+            self.source_client.call_odoo(
+                'object', 'execute_kw', self.source_client.db,
+                self.source_client.uid, self.source_client.password,
+                model_name, 'write',
+                [[record['id']], {'x_is_integrated': True}]
+            )
+            print(f"Transaksi dengan ID {record['id']} di database sumber telah ditandai sebagai diintegrasikan.")
+
+            # Menjalankan tombol action_apply_inventory
+            self.target_client.call_odoo(
+                'object', 'execute_kw', self.target_client.db,
+                self.target_client.uid, self.target_client.password,
+                'stock.quant', 'action_apply_inventory',
+                [stock_quant_id]
+            )
+
+            print(f"Action apply inventory telah dijalankan untuk stock.quant ID {stock_quant_id}.")
+
+            # Menandai transaksi di sumber sebagai telah diintegrasikan
+            self.source_client.call_odoo(
+                'object', 'execute_kw', self.source_client.db,
+                self.source_client.uid, self.source_client.password,
+                model_name, 'write',
+                [[record['id']], {'x_is_integrated': True}]
+            )
+            print(f"Transaksi dengan ID {record['id']} di database sumber telah ditandai sebagai diintegrasikan.")
+
     def update_session_status(self, model_name, fields, description):
     # Fetch the POS sessions to update from the target client
         pos_sessions = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
@@ -851,34 +2425,31 @@ class DataTransaksi:
                 print(f"Gagal mengupdate sesi {name}.")
 
     def debug_taxes(self, model_name, fields, description):
-        search_target = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                            self.source_client.uid, self.source_client.password,
-                                                            model_name, 'search_read',
-                                                            [[]],
-                                                            {'fields': fields})
-        
-        tax_id = search_target[0]['id']
+        tax_source = self.source_client.call_odoo(
+            'object', 'execute_kw', self.source_client.db,
+            self.source_client.uid, self.source_client.password,
+            model_name, 'search_read',
+            [[]],
+            {'fields': fields}
+        )
 
-        search_target_tax = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                            self.source_client.uid, self.source_client.password,
-                                                            'account.tax', 'search_read',
-                                                            [[['id', '=', tax_id]]],
-                                                            {'fields': ['name']})
-        
-        name_tax_id = search_target_tax[0]['name']
-        
-        tax_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                            self.target_client.uid, self.target_client.password,
-                                                            'account.tax', 'search_read',
-                                                            [[['name', '=', name_tax_id]]],
-                                                            {'fields': fields})
-        
-        name_tax_target = tax_target[0]['name']                   
-        if tax_target:
-            tax_id = tax_target[0]['id']
-            print(f"Nama tax {name_tax_target} di database target: {tax_id}")
-        else:
-            print(f"Tidak dapat menemukan pajak dengan nama 'OUT15%' di database target.")
+        tax_ids = []
+        for rec in tax_source:
+            name = rec.get('name')
+            print(name)
+    
+            tax_target = self.target_client.call_odoo(
+                'object', 'execute_kw', self.target_client.db,
+                self.target_client.uid, self.target_client.password,
+                'account.tax', 'search_read',
+                [[['name', '=', name]]],
+                {'fields': ['id']}
+            )
+
+            if tax_target:  # Check if the list is not empty
+                tax_ids.append(tax_target[0]['id'])
+
+                print(tax_ids)
         
     def update_integrated(self, model_name, fields, description):
         # Mengambil data dari Odoo
@@ -934,7 +2505,6 @@ class DataTransaksi:
                     print(f"Error updating record with ID {order_id}: {e}")
         else:
             print("No records found to update.")
-
 
     def create_data_transaksi(self, model, record, modul):
         try:

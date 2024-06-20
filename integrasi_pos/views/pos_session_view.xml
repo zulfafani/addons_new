@@ -10,6 +10,9 @@
             <field name="is_integrated"/>
             <field name="name_session_pos"/>
         </xpath>
+        <xpath expr="//button[@name='show_journal_items']" position="attributes">
+          <attribute name="invisible">0</attribute>
+        </xpath>
       </field>
     </record>
 

@@ -22,6 +22,8 @@ class DataIntegrator:
                 field_uniq = 'login'
             elif model == 'stock.location':
                 field_uniq = 'complete_name'
+            elif model == 'account.account':
+                field_uniq = 'code'
             else:
                 field_uniq = 'name'
             return field_uniq
@@ -41,14 +43,38 @@ class DataIntegrator:
     def transfer_data(self, model, fields, modul):
         try:
             field_uniq = self.get_field_uniq_from_model(model)
-            data_list = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+            
+            if model == 'account.tax':
+                #get company id
+                company_name_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                    self.source_client.password, 'res.company', 'search_read', [[[field_uniq, '!=', False]]],
+                                                    {'fields': ['name']})
+                company_name_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
+                                                    self.target_client.password, 'res.company', 'search_read', [[[field_uniq, '!=', False]]],
+                                                    {'fields': ['name']})
+                
+                existing_company = {data['name'] for data in company_name_target}
+                existing_company_str_one = next(iter(existing_company))
+
+                company_id_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                    self.source_client.password, 'res.company', 'search_read', [[['name', '=', existing_company_str_one]]],
+                                                    {'fields': ['id']})
+                company_id_source_dict = next(iter(company_id_source))
+                company_id_source_str_one = company_id_source_dict['id']
+
+                data_list = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                    self.source_client.password, model, 'search_read', [[[field_uniq, '!=', False], ['company_id', '=', company_id_source_str_one]]],
+                                                    {'fields': fields})
+            else:
+                data_list = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
                                                     self.source_client.password, model, 'search_read', [[[field_uniq, '!=', False]]],
                                                     {'fields': fields})
+            
             existing_data = {data[field_uniq] for data in self.get_existing_data(model, field_uniq)}
 
             for record in data_list:
                 code = record.get(field_uniq)
-                    
+                
                 if code not in existing_data:
                     valid_record = self.validate_record_data(record, model)
                     self.create_data(model, valid_record, modul)
@@ -60,7 +86,21 @@ class DataIntegrator:
                     
                     for record_target in target_record:
                         updated_fields = {field: record[field] for field in fields if record.get(field) != record_target.get(field)}
+                        if 'categ_id' in updated_fields:
+                            if record.get('categ_id', [None, None])[1] == record_target.get('categ_id', [None, None])[1]:
+                                del updated_fields['categ_id']
+                        if 'parent_id' in updated_fields:
+                            if record.get('parent_id', [None, None])[1] == record_target.get('parent_id', [None, None])[1]:
+                                del updated_fields['parent_id']
+                        if 'location_id' in updated_fields:
+                            if record.get('location_id', [None, None])[1] == record_target.get('location_id', [None, None])[1]:
+                                del updated_fields['location_id']
+                        if 'partner_id' in updated_fields:
+                            if record.get('partner_id', [None, None])[1] == record_target.get('partner_id', [None, None])[1]:
+                                del updated_fields['partner_id']
+                        
                         valid_record = self.validate_record_data(updated_fields, model)
+                        
                         if valid_record:
                             record_id = record_target.get('id')
                             self.update_data(model, record_id, valid_record, modul, record)
@@ -76,7 +116,18 @@ class DataIntegrator:
                 if field_name in type_fields:
                     field_metadata = type_fields[field_name]['type']
                     if (field_metadata == 'many2one' or field_metadata == 'many2many') and isinstance(field_value, list):
-                        field_data = field_value[1] if field_value else False
+                        if (field_metadata == 'many2one'):
+                            field_data = field_value[1] if field_value else False
+                        if (field_name == 'tag_ids'):
+                            field_data = field_value[0] if field_value else False
+                            if field_data:
+                                tag_tax = self.get_account_tag_source(field_data, 'account.account.tag')
+                                field_data = tag_tax[0]['name']
+                        if (field_name == 'taxes_id'):
+                            field_data = field_value[0] if field_value else False
+                            if field_data:
+                                name_tax = self.get_account_tax_source(field_data, 'account.tax')
+                                field_data = name_tax[0]['name']
                      
                         if field_name in relation_fields:
                             relation_model_info = relation_fields[field_name]
@@ -90,6 +141,12 @@ class DataIntegrator:
                                         pattern = r'\[(.*?)\]'
                                         match = re.search(pattern, field_data)
                                         field_data = match.group(1)
+
+                                    if relation_model == 'account.account':
+                                        # Menggunakan split untuk memisahkan string
+                                        parts = field_data.split()
+                                        # Mengambil bagian pertama yang merupakan angka
+                                        field_data = parts[0]
   
                                     datas = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                             self.target_client.uid, self.target_client.password,
@@ -97,7 +154,12 @@ class DataIntegrator:
                                                             [[[field_uniq, '=', field_data]]], {'fields': ['id']})
                                     
                                     if datas:
-                                        record[field_name] = datas[0]['id'] if datas[0] else False
+                                        if field_name == 'tag_ids' or field_name == 'taxes_id':
+                                            value = datas[0]['id'] if datas[0] else False
+                                            # Jika value ada dan bukan list, bungkus dalam list
+                                            record[field_name] = [value] if value and not isinstance(value, list) else value
+                                        else:
+                                            record[field_name] = datas[0]['id'] if datas[0] else False
                                     else:
                                         record[field_name] = field_value[0] if field_value else False
             return record
@@ -122,10 +184,30 @@ class DataIntegrator:
         except Exception as e:
             print(f"Error occurred while get data type for fields: {e}")
 
+    def get_account_tag_source(self, field_data, model):
+        try:
+            account_tag = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                     self.source_client.uid, self.source_client.password,
+                                                     model, 'search_read', [[['id', '=', field_data]]], {'fields': ['name']})
+            return account_tag
+        except Exception as e:
+            print(f"Error occurred while get account tag: {e}")
+
+    def get_account_tax_source(self, field_data, model):
+        try:
+            account_tax = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                     self.source_client.uid, self.source_client.password,
+                                                     model, 'search_read', [[['id', '=', field_data]]], {'fields': ['name']})
+            return account_tax
+        except Exception as e:
+            print(f"Error occurred while get account tag: {e}")
+
     def create_data(self, model, record, modul):
         try:
             if model == 'product.pricelist':
                 record['item_ids'] = self.transfer_pricelist_lines(record['id'], 'product.pricelist.item')
+            if model == 'account.tax':
+                record['invoice_repartition_line_ids'] = self.transfer_tax_lines(record['id'], 'account.tax.repartition.line')
             
             start_time = time.time()
             self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
@@ -149,6 +231,24 @@ class DataIntegrator:
                                                 model, 'search_read',
                                                 [[['pricelist_id', '=', pricelist_id]]],
                                                 {'fields': ['product_tmpl_id','min_quantity', 'fixed_price', 'date_start', 'date_end']})
+
+            formatted_invoice_lines = []
+            for line in lines:
+                valid_lines = self.validate_record_data(line, model)
+                formatted_invoice_lines.append((0, 0, valid_lines))
+
+            return formatted_invoice_lines
+        except Exception as e:
+            sync_status = f"An error occurred while transfer invoice lines: {e}"
+            print(sync_status)
+
+    def transfer_tax_lines(self, tax_id, model):
+        try:
+            lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                self.source_client.uid, self.source_client.password,
+                                                model, 'search_read',
+                                                [[['tax_id', '=', tax_id]]],
+                                                {'fields': ['tax_id','factor_percent','repartition_type', 'account_id', 'tag_ids', 'document_type', 'use_in_tax_closing']})
 
             formatted_invoice_lines = []
             for line in lines:

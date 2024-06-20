@@ -33,11 +33,14 @@
         'views/log_note_view.xml',
         'views/log_menu.xml',
         'views/stock_picking_view.xml',
-        'views/pos_session_view.xml',\
+        'views/pos_session_view.xml',
         'views/pos_order_view.xml',
+        # 'views/views_card_number.xml',
+        # 'views/stock_move_line_view.xml',
+        # 'views/pos_order_line_view.xml',
     ],
-
+    'license': 'LGPL-3',
     'installable': True,
-    'application': True,
-    'auto_install': False
+    'auto_install': False,
+    'application': False,
 }
