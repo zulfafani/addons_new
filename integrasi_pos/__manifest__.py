@@ -28,7 +28,9 @@
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
     'data': [
         'security/ir.model.access.csv',
+        'data/sequence.xml',
         'views/res_partner_view.xml',
+        'views/product_template_view.xml',
         'views/log_code_runtime_view.xml',
         'views/log_note_view.xml',
         'views/log_menu.xml',

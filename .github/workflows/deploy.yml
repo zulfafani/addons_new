@@ -3,7 +3,7 @@ name: Deploy to Ubuntu Server
 on:
   push:
     branches:
-      - development  # atau branch lain yang Anda inginkan
+      - development_pos  # atau branch lain yang Anda inginkan
 
 jobs:
   deploy:
