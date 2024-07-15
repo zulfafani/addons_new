@@ -20,7 +20,6 @@ def main():
 
     instancesSS = [
     'odoo_db1a',
-    'odoo_db1b',
     ]
 
     for instance_name in instancesSS:
@@ -30,7 +29,7 @@ def main():
 
         integrator_master = DataIntegrator(odoo_mc_client, odoo_ss_client)
         integrator_transaksi = DataTransaksi(odoo_ss_client, odoo_mc_client)
-        integrator_transaksiMCtoSS = DataTransaksiMCtoSS(odoo_mc_client, odoo_ss_client)
+        integrator_transaksiMCtoSS = DataTransaksiMCtoSS(odoo_ss_client, odoo_mc_client)
 
         # Master MC to Store Server
         # integrator_master.transfer_data('res.partner.title', ['name', 'shortcut'], 'Master Customer Title')
@@ -47,8 +46,8 @@ def main():
         # tidak pakai integrator_master.transfer_data('hr.employee', ['name', 'mobile_phone', 'work_phone', 'work_email', 'user_id'], 'Sales Employee')
         
         # Master Store Server to MC
-        integrator_master.transfer_data_mc('res.partner.title', ['name', 'shortcut'], 'Master Customer Title')
-        integrator_master.transfer_data_mc('res.partner', ['name', 'street', 'street2', 'phone', 'mobile', 'email', 'website','title','customer_rank', 'supplier_rank', 'customer_code'], 'Master Customer')
+        # integrator_master.transfer_data_mc('res.partner.title', ['name', 'shortcut'], 'Master Customer Title')
+        # integrator_master.transfer_data_mc('res.partner', ['name', 'street', 'street2', 'phone', 'mobile', 'email', 'website','title','customer_rank', 'supplier_rank', 'customer_code'], 'Master Customer')
         # integrator_master.transfer_data_mc('hr.employee', ['name', 'mobile_phone', 'work_phone', 'work_email'], 'Sales Employee')
         
         # Transaksi Store Server to Master Console
@@ -61,10 +60,10 @@ def main():
         # integrator_transaksi.transfer_TSOUT_NEW('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'target_location', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
         # integrator_transaksi.debug_operatin_type('stock.location', ['name', 'complete_name', 'id'], 'Transaksi PoS Order Inventory')
         # integrator_transaksi.validate_tsin_tsout('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'vit_trxid', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
-        integrator_transaksi.update_session_status('pos.session', ['name', 'state', 'start_at', 'stop_at', 'cash_register_balance_start', 'cash_register_balance_end_real'], 'Update Session PoS Order')
+        # integrator_transaksi.update_session_status('pos.session', ['name', 'state', 'start_at', 'stop_at', 'cash_register_balance_start', 'cash_register_balance_end_real'], 'Update Session PoS Order')
         # integrator_transaksi.transfer_pos_order_session('pos.session', ['name', 'config_id', 'user_id', 'start_at', 'stop_at', 'state'], 'Master Session PoS Order Invoice')
+        integrator_transaksi.transfer_pos_order_invoice('pos.order', ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'employee_id', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids'], 'Transaksi PoS Order Invoice')
         # integrator_transaksi.transfer_warehouse_master('stock.warehouse', ['name', 'lot_stock_id', 'company_id'], 'Insert Warehouse')
-        # integrator_transaksi.transfer_pos_order_invoice('pos.order', ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids'], 'Transaksi PoS Order Invoice')
         # integrator_transaksi.transfer_stock_adjustment('stock.move.line', ['reference', 'quantity', 'product_id', 'location_id', 'location_dest_id', 'company_id', 'state'], 'Transaksi Adjustment Stock')
         # integrator_transaksi.debug_taxes('account.tax', ['name', 'id'], 'Taxes Invoice')
         # integrator_transaksi.update_integrated('pos.session', ['is_integrated'], "Session Updated")
@@ -72,13 +71,14 @@ def main():
 
         # Transaksi Master Console to Store Server
         # integrator_transaksiMCtoSS.transfer_transaksi_MCtoSS('account.move', ['name', 'partner_id', 'invoice_date', 'payment_reference', 'invoice_date_due', 'journal_id', 'state', 'ref', 'move_type', 'state', 'payment_state', 'invoice_line_ids'], 'Transaksi Invoice')
-        # integrator_transaksiMCtoSS.transfer_discount_loyalty('loyalty.program', ['name', 'program_type', 'currency_id', 'portal_point_name', 'portal_visible', 'trigger', 'applies_on', 'date_from', 'date_to', 'limit_usage', 'pos_ok', 'sale_ok', 'reward_ids'], 'Transfer Discount/Loyalty')
+        # integrator_transaksiMCtoSS.transfer_discount_loyalty('loyalty.program', ['id', 'name', 'program_type', 'currency_id', 'pricelist_ids', 'portal_point_name', 'portal_visible', 'trigger', 'applies_on', 'date_from', 'date_to', 'limit_usage', 'pos_ok', 'sale_ok', 'reward_ids'], 'Transfer Discount/Loyalty')
+        # integrator_transaksiMCtoSS.update_discount_loyalty('loyalty.program', ['id', 'name', 'program_type', 'currency_id', 'pricelist_ids', 'portal_point_name', 'portal_visible', 'trigger', 'applies_on', 'date_from', 'date_to', 'limit_usage', 'pos_ok', 'sale_ok', 'vit_trxid','reward_ids'], 'Transfer Discount/Loyalty')
         # integrator_transaksiMCtoSS.transfer_pos_order_inventory_MCtoSS('stock.picking', ['name', 'partner_id', 'location_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
         # integrator_transaksiMCtoSS.transfer_internal_transfers('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
         # integrator_transaksiMCtoSS.transfer_goods_issue('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
         # integrator_transaksiMCtoSS.transfer_goods_receipt('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')
         # integrator_transaksiMCtoSS.update_session_status_MCtoSS('pos.session', ['name', 'state', 'start_at', 'stop_at', 'cash_register_balance_start', 'cash_register_balance_end_real'], 'Update Session PoS Order')
-        # integrator_transaksiMCtoSS.transfer_warehouse_master_MCtoSS('stock.warehouse', ['name', 'lot_stock_id'], 'Insert Warehouse')
+        integrator_transaksiMCtoSS.transfer_warehouse_master('stock.warehouse', ['name', 'lot_stock_id'], 'Insert Warehouse')
         # integrator_transaksiMCtoSS.transfer_pos_order_session_MCtoSS('pos.session', ['name', 'config_id', 'user_id', 'start_at', 'stop_at', 'state'], 'Master Session PoS Order Invoice')
         # integrator_transaksiMCtoSS.transfer_pos_order_invoice_MCtoSS('pos.order', ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids'], 'Transaksi PoS Order Invoice')
         # integrator_transaksiMCtoSS.ts_in_from_mc('stock.picking', ['name', 'partner_id', 'location_id', 'picking_type_id', 'location_dest_id', 'scheduled_date', 'date_done', 'origin', 'target_location', 'move_ids_without_package'], 'Transaksi PoS Order Inventory')

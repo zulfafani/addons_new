@@ -1,0 +1,66 @@
+/* static/src/css/custom_theme.css */
+:root {
+    --o-primary: #25AAE1; 
+    --o-primary-hover: #1E91BD; 
+    --o-primary-active: #166E91; 
+}
+
+.o_main_navbar {
+    background-color: var(--o-primary) !important;
+}
+
+.btn-primary {
+    background-color: var(--o-primary) !important;
+    border-color: var(--o-primary) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--o-primary-hover) !important;
+    border-color: var(--o-primary-hover) !important;
+}
+
+.btn-primary:active {
+    background-color: var(--o-primary-active) !important;
+    border-color: var(--o-primary-active) !important;
+}
+
+.o_main_navbar > ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.o_main_navbar .o_nav_entry, .o_main_navbar .dropdown-toggle {
+    border-color: transparent;
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry, .o_main_navbar .o_menu_sections .dropdown-toggle {
+    background: var(--o-primary);
+    border: 1px solid transparent;
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry:hover, .o_main_navbar .o_menu_sections .dropdown-toggle:hover {
+    background: var(--o-primary-hover);
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry:focus, .o_main_navbar .o_menu_sections .dropdown-toggle:focus {
+    background: var(--o-primary-hover);
+}
+
+.o_main_navbar .o_menu_sections .o_nav_entry:active, .o_main_navbar .o_menu_sections .dropdown-toggle:active {
+    background: var(--o-primary-active);
+}
+
+.o_main_navbar .o_menu_sections .dropdown.show > .dropdown-toggle {
+    border-color: var(--o-primary-active);
+    background: var(--o-primary-active);
+    color: #FFFFFF;
+}
+
+/* .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab:hover, .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab.selected {
+    color: var(--o-primary) !important;
+} */
+
+.o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab:hover, .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab.selected {
+    color: var(--o-primary) !important;
+}

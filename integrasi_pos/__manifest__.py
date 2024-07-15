@@ -22,7 +22,7 @@
     # for the full list
 
     # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty'],  # ['base', 'sale', 'mrp'],
+    'depends': ['web', 'base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty'],  # ['base', 'sale', 'mrp'],
 
     # always loaded
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
@@ -39,19 +39,19 @@
         'views/pos_config_view.xml',
         'data/sequence.xml',
         'views/loyalty_program_view.xml',
+        'views/favicon.xml',
+        'views/views_loyalty_reward.xml',
+        'views/views_loyalty_rule.xml',
 
     ],
     'assets': {
+        'web.assets_backend': [
+            'integrasi_pos/static/src/css/theme_custom.css',
+        ],
         'point_of_sale._assets_pos': [
-            # 'dev_pos/static/src/css/pop_up.css',
-            # 'dev_pos/static/src/xml/button.xml',
-            # # 'dev_pos/static/src/xml/button_screen.xml',
-            # 'dev_pos/static/src/js/button.js',
             'integrasi_pos/static/src/js/custom_invoice.js',
             'integrasi_pos/static/src/js/get_customer.js',
             'integrasi_pos/static/src/js/disable_download.js',
-            'integrasi_pos/static/src/js/automated_print.js',
-            # 'dev_pos/static/src/js/pop_up_card.js',
         ],
     },
     'license': 'LGPL-3',

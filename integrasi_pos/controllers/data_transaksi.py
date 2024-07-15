@@ -484,7 +484,7 @@ class DataTransaksi:
             session_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
                                                         self.source_client.uid, self.source_client.password,
                                                         'pos.session', 'search_read',
-                                                        [[['id', '=', session_id], ['state', '=', 'opened']]],
+                                                        [[['id', '=', session_id]]],
                                                         {'fields': ['name'], 'limit': 1})
 
             if not session_source or 'name' not in session_source[0]:
@@ -496,7 +496,7 @@ class DataTransaksi:
             session_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                         self.target_client.uid, self.target_client.password,
                                                         'pos.session', 'search_read',
-                                                        [[['name_session_pos', '=', session_name], ['state', '=', 'opened']]],
+                                                        [[['name_session_pos', '=', session_name]]],
                                                         {'fields': ['id'], 'limit': 1})
 
             if not session_target:
@@ -504,6 +504,37 @@ class DataTransaksi:
                 continue
 
             session_target_id = session_target[0]['id']
+
+            employee_id = record.get('employee_id')
+            if not employee_id:
+                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'employee_id'.")
+                continue
+
+            employee_id = employee_id[0] if isinstance(employee_id, list) else employee_id
+
+            employee_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                        self.source_client.uid, self.source_client.password,
+                                                        'hr.employee', 'search_read',
+                                                        [[['id', '=', employee_id]]],
+                                                        {'fields': ['name'], 'limit': 1})
+
+            if not employee_source or 'name' not in employee_source[0]:
+                print(f"Tidak dapat menemukan 'name' untuk employee_id {employee_id} di database sumber.")
+                continue
+
+            employee_name = employee_source[0]['name']
+
+            employee_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        'hr.employee', 'search_read',
+                                                        [[['name', '=', employee_name]]],
+                                                        {'fields': ['id'], 'limit': 1})
+
+            if not employee_target:
+                print(f"Tidak dapat menemukan employee dengan 'name' {employee_name} di database target.")
+                continue
+
+            employee_target_id = employee_target[0]['id']
 
             existing_pos_order_invoice = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                                     self.target_client.uid, self.target_client.password,
@@ -525,6 +556,8 @@ class DataTransaksi:
                 # Check if all products exist in the target database
                 for line in pos_order_invoice_lines:
                     product_id_info = line.get('product_id')  # product_id is a list [id, name]
+                    full_product_name = line.get('full_product_name')
+                    product_target_id = None  # Initialize product_target_id
 
                     if product_id_info:
                         product_id = product_id_info[0]  # Get the id part
@@ -552,61 +585,70 @@ class DataTransaksi:
                             else:
                                 print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
                                 missing_products.append(default_code)
-                                continue
+                                if missing_products:
+                                    missing_products_str = ", ".join(missing_products)
+                                    message = f"Terdapat produk tidak aktif dalam invoice: {missing_products_str}"
+                                    print(message)
+                                    write_date = self.get_write_date(model_name, record['id'])
+                                    self.set_log_mc.create_log_note_failed(record, 'Invoice', message, write_date)
+                                    self.set_log_ss.create_log_note_failed(record, 'Invoice', message, write_date)
+                                return
                         else:
-                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
-                            return
+                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                                    self.target_client.uid, self.target_client.password,
+                                                                    'product.product', 'search_read',
+                                                                    [[['name', '=', full_product_name]]],
+                                                                    {'fields': ['id'], 'limit': 1})
+
+                            if product_target:
+                                product_target_id = product_target[0]['id']
+                                print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+                                continue  # Skip this product since it doesn't have default_code
                     else:
                         print(f"Line item tidak memiliki 'product_id'.")
                         continue
 
-                    tax_source = self.source_client.call_odoo(
-                        'object', 'execute_kw', self.source_client.db,
-                        self.source_client.uid, self.source_client.password,
-                        'account.tax', 'search_read',
-                        [[]],
-                        {'fields': ['name']}
-                    )
-
-                    tax_ids = []
-                    for rec in tax_source:
-                        name = rec.get('name')
-
-                        tax_target = self.target_client.call_odoo(
-                            'object', 'execute_kw', self.target_client.db,
-                            self.target_client.uid, self.target_client.password,
+                    if product_target_id:
+                        tax_source = self.source_client.call_odoo(
+                            'object', 'execute_kw', self.source_client.db,
+                            self.source_client.uid, self.source_client.password,
                             'account.tax', 'search_read',
-                            [[['name', '=', name]]],
-                            {'fields': ['id']}
+                            [[]],
+                            {'fields': ['name']}
                         )
 
-                        if tax_target:  # Check if the list is not empty
-                            tax_ids.append(tax_target[0]['id'])
-                            print("Menemukan Pajak")
-                        else:
-                            print("Pajak Tidak Ditemukan")
+                        tax_ids = []
+                        for rec in tax_source:
+                            name = rec.get('name')
 
-                    pos_order_line_data = {
-                        'product_id': product_target_id,
-                        'discount': line.get('discount'),
-                        'full_product_name': line.get('full_product_name'),
-                        'qty': line.get('qty'),
-                        'price_unit': line.get('price_unit'),
-                        'price_subtotal': line.get('price_subtotal'),
-                        'price_subtotal_incl': line.get('price_subtotal_incl'),
-                        'tax_ids': [(6, 0, tax_ids)],
-                    }
-                    pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
+                            tax_target = self.target_client.call_odoo(
+                                'object', 'execute_kw', self.target_client.db,
+                                self.target_client.uid, self.target_client.password,
+                                'account.tax', 'search_read',
+                                [[['name', '=', name]]],
+                                {'fields': ['id']}
+                            )
+
+                            if tax_target:  # Check if the list is not empty
+                                tax_ids.append(tax_target[0]['id'])
+                                print("Menemukan Pajak")
+                            else:
+                                print("Pajak Tidak Ditemukan")
+
+                        pos_order_line_data = {
+                            'product_id': product_target_id,
+                            'discount': line.get('discount'),
+                            'full_product_name': line.get('full_product_name'),
+                            'qty': line.get('qty'),
+                            'price_unit': line.get('price_unit'),
+                            'price_subtotal': line.get('price_subtotal'),
+                            'price_subtotal_incl': line.get('price_subtotal_incl'),
+                            'tax_ids': [(6, 0, tax_ids)],
+                        }
+                        pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
 
                 # If there are missing products, log the error and continue with the next record
-                if missing_products:
-                    missing_products_str = ", ".join(missing_products)
-                    message = f"Terdapat produk tidak aktif dalam invoice: {missing_products_str}"
-                    print(message)
-                    write_date = self.get_write_date(model_name, record['id'])
-                    self.set_log_mc.create_log_note_failed(record, 'Invoice', message, write_date)
-                    self.set_log_ss.create_log_note_failed(record, 'Invoice', message, write_date)
-
+                
                 # Ambil data pembayaran dari sumber
                 pos_order_payments = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
                                                                 self.source_client.uid, self.source_client.password,
@@ -663,6 +705,7 @@ class DataTransaksi:
                     'vit_trxid': record.get('name'),
                     'partner_id': customer_target_id,
                     'session_id': session_target_id,
+                    'employee_id': employee_target_id,
                     'date_order': record.get('date_order', False),
                     'amount_tax': record.get('amount_tax'),
                     'amount_total': amount_paid,
@@ -2531,289 +2574,281 @@ class DataTransaksi:
             return False  # Atau sesuai dengan kebutuhan Anda
 
     def update_session_status(self, model_name, fields, description):
-        transaksi_posorder_invoice = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                'pos.order', 'search_read',
-                                                                [[['state', '=', 'invoiced'], ['is_integrated', '=', False]]],
-                                                                {'fields': ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids']})
+        # transaksi_posorder_invoice = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                         self.source_client.uid, self.source_client.password,
+        #                                                         'pos.order', 'search_read',
+        #                                                         [[['state', '=', 'invoiced'], ['is_integrated', '=', False]]],
+        #                                                         {'fields': ['name', 'date_order', 'session_id', 'user_id', 'partner_id', 'pos_reference', 'order_ref', 'tracking_number', 'margin', 'amount_tax', 'amount_total', 'amount_paid', 'amount_return', 'state', 'lines', 'payment_ids']})
 
-        if not transaksi_posorder_invoice:
-            print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
-            return
+        # if not transaksi_posorder_invoice:
+        #     print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
+        #     return
 
-        # Kirim data ke target
-        for record in transaksi_posorder_invoice:
-            partner_id = record.get('partner_id')
-            if not partner_id:
-                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
-                continue
+        # # Kirim data ke target
+        # for record in transaksi_posorder_invoice:
+        #     partner_id = record.get('partner_id')
+        #     if not partner_id:
+        #         print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'partner_id'.")
+        #         continue
 
-            partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
+        #     partner_id = partner_id[0] if isinstance(partner_id, list) else partner_id
 
-            # Cari customer di target berdasarkan partner_id dari sumber
-            customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                        self.source_client.uid, self.source_client.password,
-                                                        'res.partner', 'search_read',
-                                                        [[['id', '=', partner_id]]],
-                                                        {'fields': ['customer_code'], 'limit': 1})
+        #     # Cari customer di target berdasarkan partner_id dari sumber
+        #     customer_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                 self.source_client.uid, self.source_client.password,
+        #                                                 'res.partner', 'search_read',
+        #                                                 [[['id', '=', partner_id]]],
+        #                                                 {'fields': ['customer_code'], 'limit': 1})
 
-            if not customer_source or 'customer_code' not in customer_source[0]:
-                print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
-                continue
+        #     if not customer_source or 'customer_code' not in customer_source[0]:
+        #         print(f"Tidak dapat menemukan 'customer_code' untuk partner_id {partner_id} di database sumber.")
+        #         continue
 
-            customer_code = customer_source[0]['customer_code']
+        #     customer_code = customer_source[0]['customer_code']
 
-            customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                            self.target_client.uid, self.target_client.password,
-                                                            'res.partner', 'search_read',
-                                                            [[['customer_code', '=', customer_code]]],
-                                                            {'fields': ['id'], 'limit': 1})
+        #     customers_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                     self.target_client.uid, self.target_client.password,
+        #                                                     'res.partner', 'search_read',
+        #                                                     [[['customer_code', '=', customer_code]]],
+        #                                                     {'fields': ['id'], 'limit': 1})
 
-            if not customers_target:
-                print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
-                continue
+        #     if not customers_target:
+        #         print(f"Tidak dapat menemukan customer dengan 'customer_code' {customer_code} di database target.")
+        #         continue
 
-            customer_target_id = customers_target[0]['id']
+        #     customer_target_id = customers_target[0]['id']
 
-            # Session ID
-            session_id = record.get('session_id')
-            if not session_id:
-                print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'session_id'.")
-                continue
+        #     # Session ID
+        #     session_id = record.get('session_id')
+        #     if not session_id:
+        #         print(f"Transaksi dengan ID {record.get('id')} tidak memiliki 'session_id'.")
+        #         continue
 
-            session_id = session_id[0] if isinstance(session_id, list) else session_id
+        #     session_id = session_id[0] if isinstance(session_id, list) else session_id
 
-            # Cari session di target berdasarkan session_id dari sumber
-            session_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                        self.source_client.uid, self.source_client.password,
-                                                        'pos.session', 'search_read',
-                                                        [[['id', '=', session_id]]],
-                                                        {'fields': ['name'], 'limit': 1})
+        #     # Cari session di target berdasarkan session_id dari sumber
+        #     session_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                 self.source_client.uid, self.source_client.password,
+        #                                                 'pos.session', 'search_read',
+        #                                                 [[['id', '=', session_id], ['state', '=', 'closed']]],
+        #                                                 {'fields': ['name'], 'limit': 1})
 
-            if not session_source or 'name' not in session_source[0]:
-                print(f"Tidak dapat menemukan 'name' untuk session_id {session_id} di database sumber.")
-                continue
+        #     if not session_source or 'name' not in session_source[0]:
+        #         print(f"Tidak dapat menemukan 'name' untuk session_id {session_id} di database sumber.")
+        #         continue
 
-            session_name = session_source[0]['name']
+        #     session_name = session_source[0]['name']
 
-            session_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                        self.target_client.uid, self.target_client.password,
-                                                        'pos.session', 'search_read',
-                                                        [[['name_session_pos', '=', session_name]]],
-                                                        {'fields': ['id'], 'limit': 1})
+        #     session_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                 self.target_client.uid, self.target_client.password,
+        #                                                 'pos.session', 'search_read',
+        #                                                 [[['name_session_pos', '=', session_name], ['state', '=', 'opened']]],
+        #                                                 {'fields': ['id'], 'limit': 1})
 
-            if not session_target:
-                print(f"Tidak dapat menemukan session dengan 'session_name' {session_name} di database target.")
-                continue
+        #     if not session_target:
+        #         print(f"Tidak dapat menemukan session dengan 'session_name' {session_name} di database target.")
+        #         continue
 
-            session_target_id = session_target[0]['id']
+        #     session_target_id = session_target[0]['id']
 
-            existing_pos_order_invoice = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                    self.target_client.uid, self.target_client.password,
-                                                                    'pos.order', 'search_read',
-                                                                    [[['vit_trxid', '=', record.get('name')]]],
-                                                                    {'fields': ['id'], 'limit': 1})
+        #     existing_pos_order_invoice = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                             self.target_client.uid, self.target_client.password,
+        #                                                             'pos.order', 'search_read',
+        #                                                             [[['vit_trxid', '=', record.get('name')]]],
+        #                                                             {'fields': ['id'], 'limit': 1})
 
-            if not existing_pos_order_invoice:
-                pos_order_invoice_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                        self.source_client.uid, self.source_client.password,
-                                                                        'pos.order.line', 'search_read',
-                                                                        [[['order_id', '=', record['id']]]],
-                                                                        {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit', 'tax_ids_after_fiscal_position', 'discount', 'price_subtotal', 'price_subtotal_incl']})
-                pos_order_invoice_line_ids = []
-                pos_order_payment_ids = []
-                missing_products = []
-                total_tax = 0  # Initialize total tax
+        #     if not existing_pos_order_invoice:
+        #         pos_order_invoice_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                                 self.source_client.uid, self.source_client.password,
+        #                                                                 'pos.order.line', 'search_read',
+        #                                                                 [[['order_id', '=', record['id']]]],
+        #                                                                 {'fields': ['product_id', 'full_product_name', 'qty', 'price_unit', 'tax_ids_after_fiscal_position', 'discount', 'price_subtotal', 'price_subtotal_incl']})
+        #         pos_order_invoice_line_ids = []
+        #         pos_order_payment_ids = []
+        #         missing_products = []
+        #         total_tax = 0  # Initialize total tax
 
-                # Check if all products exist in the target database
-                for line in pos_order_invoice_lines:
-                    product_id_info = line.get('product_id')  # product_id is a list [id, name]
+        #         # Check if all products exist in the target database
+        #         for line in pos_order_invoice_lines:
+        #             product_id_info = line.get('product_id')  # product_id is a list [id, name]
 
-                    if product_id_info:
-                        product_id = product_id_info[0]  # Get the id part
+        #             if product_id_info:
+        #                 product_id = product_id_info[0]  # Get the id part
 
-                        # Get the default_code for the product in the source system
-                        product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                    self.source_client.uid, self.source_client.password,
-                                                                    'product.product', 'search_read',
-                                                                    [[['id', '=', product_id]]],
-                                                                    {'fields': ['default_code', 'taxes_id'], 'limit': 1})
+        #                 # Get the default_code for the product in the source system
+        #                 product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                             self.source_client.uid, self.source_client.password,
+        #                                                             'product.product', 'search_read',
+        #                                                             [[['id', '=', product_id]]],
+        #                                                             {'fields': ['default_code', 'taxes_id'], 'limit': 1})
 
-                        if product_source and 'default_code' in product_source[0]:
-                            default_code = product_source[0]['default_code']
-                            taxes_ids = product_source[0].get('taxes_id', [])
+        #                 if product_source and 'default_code' in product_source[0]:
+        #                     default_code = product_source[0]['default_code']
+        #                     taxes_ids = product_source[0].get('taxes_id', [])
 
-                            # Search for the product in the target system using default_code
-                            product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                        self.target_client.uid, self.target_client.password,
-                                                                        'product.product', 'search_read',
-                                                                        [[['default_code', '=', default_code]]],
-                                                                        {'fields': ['id'], 'limit': 1})
+        #                     # Search for the product in the target system using default_code
+        #                     product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                                 self.target_client.uid, self.target_client.password,
+        #                                                                 'product.product', 'search_read',
+        #                                                                 [[['default_code', '=', default_code]]],
+        #                                                                 {'fields': ['id'], 'limit': 1})
 
-                            if product_target:
-                                product_target_id = product_target[0]['id']
-                            else:
-                                print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
-                                missing_products.append(default_code)
-                                continue
-                        else:
-                            print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
-                            return
-                    else:
-                        print(f"Line item tidak memiliki 'product_id'.")
-                        continue
+        #                     if product_target:
+        #                         product_target_id = product_target[0]['id']
+        #                     else:
+        #                         print(f"Tidak dapat menemukan product dengan 'default_code' {default_code} di database target.")
+        #                         missing_products.append(default_code)
+        #                         continue
+        #                 else:
+        #                     print(f"Tidak dapat menemukan 'default_code' untuk product_id {product_id} di database sumber.")
+        #                     return
+        #             else:
+        #                 print(f"Line item tidak memiliki 'product_id'.")
+        #                 continue
 
-                    tax_source = self.source_client.call_odoo(
-                        'object', 'execute_kw', self.source_client.db,
-                        self.source_client.uid, self.source_client.password,
-                        'account.tax', 'search_read',
-                        [[]],
-                        {'fields': ['name']}
-                    )
+        #             tax_source = self.source_client.call_odoo(
+        #                 'object', 'execute_kw', self.source_client.db,
+        #                 self.source_client.uid, self.source_client.password,
+        #                 'account.tax', 'search_read',
+        #                 [[]],
+        #                 {'fields': ['name']}
+        #             )
 
-                    tax_ids = []
-                    for rec in tax_source:
-                        name = rec.get('name')
+        #             tax_ids = []
+        #             for rec in tax_source:
+        #                 name = rec.get('name')
 
-                        tax_target = self.target_client.call_odoo(
-                            'object', 'execute_kw', self.target_client.db,
-                            self.target_client.uid, self.target_client.password,
-                            'account.tax', 'search_read',
-                            [[['name', '=', name]]],
-                            {'fields': ['id']}
-                        )
+        #                 tax_target = self.target_client.call_odoo(
+        #                     'object', 'execute_kw', self.target_client.db,
+        #                     self.target_client.uid, self.target_client.password,
+        #                     'account.tax', 'search_read',
+        #                     [[['name', '=', name]]],
+        #                     {'fields': ['id']}
+        #                 )
 
-                        if tax_target:  # Check if the list is not empty
-                            tax_ids.append(tax_target[0]['id'])
-                            print("Menemukan Pajak")
-                        else:
-                            print("Pajak Tidak Ditemukan")
+        #                 if tax_target:  # Check if the list is not empty
+        #                     tax_ids.append(tax_target[0]['id'])
+        #                     print("Menemukan Pajak")
+        #                 else:
+        #                     print("Pajak Tidak Ditemukan")
 
-                    pos_order_line_data = {
-                        'product_id': product_target_id,
-                        'discount': line.get('discount'),
-                        'full_product_name': line.get('full_product_name'),
-                        'qty': line.get('qty'),
-                        'price_unit': line.get('price_unit'),
-                        'price_subtotal': line.get('price_subtotal'),
-                        'price_subtotal_incl': line.get('price_subtotal_incl'),
-                        'tax_ids': [(6, 0, tax_ids)],
-                    }
-                    pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
+        #             pos_order_line_data = {
+        #                 'product_id': product_target_id,
+        #                 'discount': line.get('discount'),
+        #                 'full_product_name': line.get('full_product_name'),
+        #                 'qty': line.get('qty'),
+        #                 'price_unit': line.get('price_unit'),
+        #                 'price_subtotal': line.get('price_subtotal'),
+        #                 'price_subtotal_incl': line.get('price_subtotal_incl'),
+        #                 'tax_ids': [(6, 0, tax_ids)],
+        #             }
+        #             pos_order_invoice_line_ids.append((0, 0, pos_order_line_data))
 
-                # If there are missing products, log the error and continue with the next record
-                if missing_products:
-                    missing_products_str = ", ".join(missing_products)
-                    message = f"Terdapat produk tidak aktif dalam invoice: {missing_products_str}"
-                    print(message)
-                    write_date = self.get_write_date(model_name, record['id'])
-                    self.set_log_mc.create_log_note_failed(record, 'Invoice', message, write_date)
-                    self.set_log_ss.create_log_note_failed(record, 'Invoice', message, write_date)
+        #         # If there are missing products, log the error and continue with the next record
+        #         if missing_products:
+        #             missing_products_str = ", ".join(missing_products)
+        #             message = f"Terdapat produk tidak aktif dalam invoice: {missing_products_str}"
+        #             print(message)
+        #             write_date = self.get_write_date(model_name, record['id'])
+        #             self.set_log_mc.create_log_note_failed(record, 'Invoice', message, write_date)
+        #             self.set_log_ss.create_log_note_failed(record, 'Invoice', message, write_date)
 
-                # Ambil data pembayaran dari sumber
-                pos_order_payments = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                'pos.payment', 'search_read',
-                                                                [[['pos_order_id', '=', record['id']]]],
-                                                                {'fields': ['amount', 'payment_date', 'payment_method_id']})
+        #         # Ambil data pembayaran dari sumber
+        #         pos_order_payments = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                         self.source_client.uid, self.source_client.password,
+        #                                                         'pos.payment', 'search_read',
+        #                                                         [[['pos_order_id', '=', record['id']]]],
+        #                                                         {'fields': ['amount', 'payment_date', 'payment_method_id']})
 
-                amount_paid = 0
-                for payment in pos_order_payments:
-                    amount_paid += payment.get('amount')
-                    payment_method_id = payment.get('payment_method_id')
-                    if payment_method_id:
-                        payment_method_id = payment_method_id[0]  # payment_method_id is a list [id, name], we need the id
+        #         amount_paid = 0
+        #         for payment in pos_order_payments:
+        #             amount_paid += payment.get('amount')
+        #             payment_method_id = payment.get('payment_method_id')
+        #             if payment_method_id:
+        #                 payment_method_id = payment_method_id[0]  # payment_method_id is a list [id, name], we need the id
 
-                        # Get the name for the payment method in the source system
-                        payment_method_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                            self.source_client.uid, self.source_client.password,
-                                                                            'pos.payment.method', 'search_read',
-                                                                            [[['id', '=', payment_method_id]]],
-                                                                            {'fields': ['name'], 'limit': 1})
+        #                 # Get the name for the payment method in the source system
+        #                 payment_method_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+        #                                                                     self.source_client.uid, self.source_client.password,
+        #                                                                     'pos.payment.method', 'search_read',
+        #                                                                     [[['id', '=', payment_method_id]]],
+        #                                                                     {'fields': ['name'], 'limit': 1})
 
-                        if payment_method_source and 'name' in payment_method_source[0]:
-                            payment_method_name = payment_method_source[0]['name']
+        #                 if payment_method_source and 'name' in payment_method_source[0]:
+        #                     payment_method_name = payment_method_source[0]['name']
 
-                            # Search for the payment method in the target system using name
-                            payment_method_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                                self.target_client.uid, self.target_client.password,
-                                                                                'pos.payment.method', 'search_read',
-                                                                                [[['name', '=', payment_method_name]]],
-                                                                                {'fields': ['id'], 'limit': 1})
+        #                     # Search for the payment method in the target system using name
+        #                     payment_method_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                                         self.target_client.uid, self.target_client.password,
+        #                                                                         'pos.payment.method', 'search_read',
+        #                                                                         [[['name', '=', payment_method_name]]],
+        #                                                                         {'fields': ['id'], 'limit': 1})
 
-                            if payment_method_target:
-                                payment_method_id = payment_method_target[0]['id']
-                            else:
-                                print(f"Tidak dapat menemukan payment method dengan 'name' {payment_method_name} di database target.")
-                                continue
-                        else:
-                            print(f"Tidak dapat menemukan 'name' untuk payment_method_id {payment_method_id} di database sumber.")
-                            continue
-                    else:
-                        print(f"Payment tidak memiliki 'payment_method_id'.")
-                        continue
+        #                     if payment_method_target:
+        #                         payment_method_id = payment_method_target[0]['id']
+        #                     else:
+        #                         print(f"Tidak dapat menemukan payment method dengan 'name' {payment_method_name} di database target.")
+        #                         continue
+        #                 else:
+        #                     print(f"Tidak dapat menemukan 'name' untuk payment_method_id {payment_method_id} di database sumber.")
+        #                     continue
+        #             else:
+        #                 print(f"Payment tidak memiliki 'payment_method_id'.")
+        #                 continue
 
-                    pos_order_payment_data = {
-                        'amount': payment.get('amount'),
-                        'payment_date': payment.get('payment_date'),
-                        'payment_method_id': payment_method_id,
-                    }
-                    pos_order_payment_ids.append((0, 0, pos_order_payment_data))
+        #             pos_order_payment_data = {
+        #                 'amount': payment.get('amount'),
+        #                 'payment_date': payment.get('payment_date'),
+        #                 'payment_method_id': payment_method_id,
+        #             }
+        #             pos_order_payment_ids.append((0, 0, pos_order_payment_data))
 
-                pos_order_data = {
-                    'name': record.get('name'),
-                    'pos_reference': record.get('pos_reference'),
-                    'vit_trxid': record.get('name'),
-                    'partner_id': customer_target_id,
-                    'session_id': session_target_id,
-                    'date_order': record.get('date_order', False),
-                    'amount_tax': record.get('amount_tax'),
-                    'amount_total': amount_paid,
-                    'amount_paid': amount_paid,
-                    'amount_return': record.get('amount_return'),
-                    'tracking_number': record.get('tracking_number'),
-                    'margin': record.get('margin'),
-                    'state': record.get('state'),
-                    'is_integrated': True,
-                    'lines': pos_order_invoice_line_ids,
-                    'payment_ids': pos_order_payment_ids,
-                }
+        #         pos_order_data = {
+        #             'name': record.get('name'),
+        #             'pos_reference': record.get('pos_reference'),
+        #             'vit_trxid': record.get('name'),
+        #             'partner_id': customer_target_id,
+        #             'session_id': session_target_id,
+        #             'date_order': record.get('date_order', False),
+        #             'amount_tax': record.get('amount_tax'),
+        #             'amount_total': amount_paid,
+        #             'amount_paid': amount_paid,
+        #             'amount_return': record.get('amount_return'),
+        #             'tracking_number': record.get('tracking_number'),
+        #             'margin': record.get('margin'),
+        #             'state': record.get('state'),
+        #             'is_integrated': True,
+        #             'lines': pos_order_invoice_line_ids,
+        #             'payment_ids': pos_order_payment_ids,
+        #         }
 
-                try:
-                    start_time = time.time()
-                    new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                    self.target_client.uid, self.target_client.password,
-                                                                    'pos.order', 'create',
-                                                                    [pos_order_data])
+        #         try:
+        #             start_time = time.time()
+        #             new_pos_order_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                                             self.target_client.uid, self.target_client.password,
+        #                                                             'pos.order', 'create',
+        #                                                             [pos_order_data])
 
-                    print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
+        #             print(f"Pos Order baru telah dibuat dengan ID: {new_pos_order_id}")
 
-                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                self.target_client.uid, self.target_client.password,
-                                                'pos.order', 'action_pos_order_invoice',
-                                                [[new_pos_order_id]])
-                    print(f"Tombol action_pos_order_invoice telah dijalankan untuk Pos Order ID: {new_pos_order_id}")
+        #             self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+        #                                         self.target_client.uid, self.target_client.password,
+        #                                         'pos.order', 'action_pos_order_invoice',
+        #                                         [[new_pos_order_id]])
+        #             print(f"Tombol action_pos_order_invoice telah dijalankan untuk Pos Order ID: {new_pos_order_id}")
                     
-                    self.source_client.call_odoo(
-                            'object', 'execute_kw', self.source_client.db,
-                            self.source_client.uid, self.source_client.password,
-                            'pos.order', 'write',
-                            [[record['id']], {'is_integrated': True}]
-                    )
-                    
-                    end_time = time.time()
-                    duration = end_time - start_time
-
-                    write_date = self.get_write_date(model_name, record['id'])
-                    self.set_log_mc.create_log_note_success(record, start_time, end_time, duration, 'Invoice', write_date)
-                    self.set_log_ss.create_log_note_success(record, start_time, end_time, duration, 'Invoice', write_date)
-                    
+        #             self.source_client.call_odoo(
+        #                     'object', 'execute_kw', self.source_client.db,
+        #                     self.source_client.uid, self.source_client.password,
+        #                     'pos.order', 'write',
+        #                     [[record['id']], {'is_integrated': True}]
+        #             )
                     pos_sessions = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                self.source_client.uid, self.source_client.password,
-                                                                model_name, 'search_read',
-                                                                [[['state', '=', 'closed'], ['is_updated', '=', False]]],
-                                                                {'fields': fields})
-                    
+                                                    self.source_client.uid, self.source_client.password,
+                                                    model_name, 'search_read',
+                                                    [[]],
+                                                    {'fields': fields})
+        
                     if not pos_sessions:
                         print("Tidak ada sesi yang ditemukan untuk ditransfer.")
                         return
@@ -2843,7 +2878,7 @@ class DataTransaksi:
                         source_session = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                                     self.target_client.uid, self.target_client.password,
                                                                     model_name, 'search_read',
-                                                                    [[['name_session_pos', '=', name], ['state', '=', 'opened']]],
+                                                                    [[['name_session_pos', '=', name]]],
                                                                     {'fields': ['state'], 'limit': 1})
 
                         if not source_session:
@@ -2853,7 +2888,6 @@ class DataTransaksi:
                         # Update the state on the target client
                         session_id = source_session[0]['id']
 
-                        start_time = time.time()
                         update_result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                                                         self.target_client.uid, self.target_client.password,
                                                         model_name, 'write',
@@ -2866,19 +2900,27 @@ class DataTransaksi:
                                 [[sessions['id']], {'is_updated': True}]
                         )
 
-                        end_time = time.time()
-                        duration = end_time - start_time
+                        # end_time = time.time()
+                        # duration = end_time - start_time
 
-                        write_date = self.get_write_date(model_name, record['id'])
-                        self.set_log_mc.create_log_note_success(sessions, start_time, end_time, duration, 'Update Session Status', write_date)
-                        self.set_log_ss.create_log_note_success(sessions, start_time, end_time, duration, 'Update Session Status', write_date)
+                        # write_date = self.get_write_date(model_name, sessions['id'])
+                        # self.set_log_mc.create_log_note_success(sessions, start_time, end_time, duration, 'Update Session Status', write_date)
+                        # self.set_log_ss.create_log_note_success(sessions, start_time, end_time, duration, 'Update Session Status', write_date)
                         
                         if update_result:
                             print(f"Berhasil mengupdate sesi {name} dengan status {state}.")
                         else:
                             print(f"Gagal mengupdate sesi {name}.")
-                except Exception as e:
-                    print(f"Terjadi kesalahan saat membuat invoice: {e}")
+                    
+                    # end_time = time.time()
+                    # duration = end_time - start_time
+
+                #     write_date = self.get_write_date(model_name, record['id'])
+                #     self.set_log_mc.create_log_note_success(record, start_time, end_time, duration, 'Invoice', write_date)
+                #     self.set_log_ss.create_log_note_success(record, start_time, end_time, duration, 'Invoice', write_date)
+                # except Exception as e:
+                #     print(f"Terjadi kesalahan saat membuat invoice: {e}")
+                    
 
     def debug_taxes(self, model_name, fields, description):
         tax_source = self.source_client.call_odoo(
