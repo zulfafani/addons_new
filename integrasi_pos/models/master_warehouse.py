@@ -12,3 +12,4 @@ class MasterWarehouse(models.Model):
 
     warehouse_name = fields.Char(string="Warehouse Name")
     warehouse_code = fields.Char(string="Warehouse Code")
+    warehouse_transit = fields.Char(string="Warehouse Transit")

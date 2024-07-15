@@ -10,6 +10,7 @@
             <tree string="List Warehouse">
                 <field name="warehouse_name"/>    
                 <field name="warehouse_code"/>   
+                <field name="warehouse_transit"/>   
             </tree>
         </field>
     </record>
