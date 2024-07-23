@@ -3,18 +3,62 @@ from datetime import datetime, timedelta
 import pytz
 from odoo import models, fields, api, SUPERUSER_ID
 from odoo.exceptions import UserError
+import random
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    is_integrated = fields.Boolean(string="Integrated", default=False)
+    is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
     vit_trxid = fields.Char(string="Transaction ID")
     target_location = fields.Many2one('master.warehouse', string="Target Location")
+    targets = fields.Char(string="Target Location")
 
     def button_validate(self):
-        for picking in self:
-            # Set the 'origin' field with the value of the 'name' field
-            picking.origin = picking.name
+        # Check if the operation type is 'Internal Transfers'
+        if self.picking_type_id.code == 'internal':
+            # Check if the source and destination locations are the same
+            if self.location_id.id == self.location_dest_id.id:
+                raise UserError("Cannot validate this operation: Source and destination locations are the same.")
+        
+        # Call the super method
+        res = super(StockPicking, self).button_validate()
+        self.write({'origin': False})
+        return res
+    
+    @api.model
+    def create_stock_pickings(self):
+        # Temukan ID untuk operation type TS Out
+        operation_type_id = self.env['stock.picking.type'].search([('name', 'ilike', 'TS Out')], limit=1)
+        if not operation_type_id:
+            raise UserError('Operation Type TS Out tidak ditemukan.')
+        
+        product_codes = ['LBR00001', 'LBR00002', 'LBR00003']
+        products = self.env['product.product'].search([('default_code', 'in', product_codes)])
+        if len(products) != 3:
+            raise UserError('Tidak semua produk dengan default_code yang ditentukan ditemukan.')
 
-        # Call the original button_validate method
-        return super(StockPicking, self).button_validate()
+        for i in range(200):
+            # Mengatur move_lines untuk setiap `stock.picking`
+            move_lines = []
+            for j, product in enumerate(products):
+                quantity = random.uniform(1, 10)
+                move_lines.append((0, 0, {
+                    'name': product.name,
+                    'product_id': product.id,
+                    # 'product_uom_id': product.uom_id.id,
+                    'product_uom_qty': quantity,
+                    'quantity': quantity,
+                    'location_id': 8,
+                    'location_dest_id': 5,
+                }))
+
+            target_location = self.env['master.warehouse'].search([('warehouse_name', '=', "Store 02")], limit=1)
+            
+            self.env['stock.picking'].create({
+                'picking_type_id': operation_type_id.id,
+                'location_id': 8,
+                'location_dest_id': 5,
+                'target_location': target_location.id,
+                'move_ids_without_package': move_lines,
+            })
+        return True

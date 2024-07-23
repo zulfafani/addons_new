@@ -5,8 +5,8 @@ from odoo.exceptions import ValidationError
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    customer_code = fields.Char(string='Customer Code')
-    is_integrated = fields.Boolean(string="User created", default=False)
+    customer_code = fields.Char(string='Customer Code', readonly=True, tracking=True)
+    is_integrated = fields.Boolean(string="User created", default=False, readonly=True, tracking=True)
 
     @api.model
     def create(self, vals):

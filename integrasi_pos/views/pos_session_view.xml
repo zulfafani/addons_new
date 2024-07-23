@@ -10,6 +10,14 @@
             <field name="is_updated"/>
             <field name="name_session_pos"/>
         </xpath>
+        <xpath expr="//field[@name='is_updated']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='name_session_pos']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
         <xpath expr="//button[@name='show_journal_items']" position="attributes">
           <attribute name="invisible">0</attribute>
         </xpath>

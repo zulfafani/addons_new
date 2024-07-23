@@ -1,14 +1,14 @@
 {
     "odoo_db1a": {
-        "url": "http://pos-store.visi-intech.com/jsonrpc",
-        "db": "odoo-store-1",
+        "url": "https://johann1091-test03-03-stage-14543512.dev.odoo.com/jsonrpc",
+        "db": "johann1091-test03-03-stage-14543512",
         "username": "admin",
-        "password": "ae6daa5e980fd7a740623c941c3582c6ef35566c"
+        "password": "678aa473234c6d7ba5847b5c7a45846c79bf5390"
     },
     "odoo_db1_mc": {
         "url": "https://johann1091-test04-mc-14270841.dev.odoo.com/jsonrpc",
         "db": "johann1091-test04-mc-14270841",
         "username": "admin",
-        "password": "3869be96fab9f75a0b882b1252a26d8d81a5174a"
+        "password": "c4c4be1fe70ffb4e8124739e3a771a8622be770e"
     }
 }

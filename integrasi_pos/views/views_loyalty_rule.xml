@@ -10,6 +10,10 @@
         <xpath expr="//field[@name='reward_point_mode']" position="after">
             <field name="vit_trxid"/>
         </xpath>
+        <xpath expr="//field[@name='vit_trxid']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
       </field>
     </record>
 
