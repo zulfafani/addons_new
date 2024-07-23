@@ -3,12 +3,12 @@
         "url": "http://pos-store.visi-intech.com/jsonrpc",
         "db": "odoo-store-1",
         "username": "admin",
-        "password": "ae6daa5e980fd7a740623c941c3582c6ef35566c"
+        "password": "f44603d2a14298c330fe15d603ca3a3db707f4d6"
     },
     "odoo_db1_mc": {
-        "url": "https://johann1091-test04-mc-14270841.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test04-mc-14270841",
+        "url": "https://abhiramatech-abhirama-tech-pos-pos-mc-14775187.dev.odoo.com/jsonrpc",
+        "db": "abhiramatech-abhirama-tech-pos-pos-mc-14775187",
         "username": "admin",
-        "password": "3869be96fab9f75a0b882b1252a26d8d81a5174a"
+        "password": "c4c4be1fe70ffb4e8124739e3a771a8622be770e"
     }
 }

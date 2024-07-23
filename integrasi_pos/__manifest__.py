@@ -22,7 +22,7 @@
     # for the full list
 
     # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['web', 'base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty'],  # ['base', 'sale', 'mrp'],
+    'depends': ['web', 'base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty', 'purchase'],  # ['base', 'sale', 'mrp'],
 
     # always loaded
     # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
@@ -42,6 +42,8 @@
         'views/favicon.xml',
         'views/views_loyalty_reward.xml',
         'views/views_loyalty_rule.xml',
+        'views/purchase_order_view.xml',
+        'views/views_account_move.xml'
 
     ],
     'assets': {

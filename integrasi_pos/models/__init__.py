@@ -12,3 +12,6 @@ from . import sale_order_line
 from . import stock_move
 from . import loyalty_rule
 from . import loyalty_reward
+from . import purchase_order
+from . import account_move
+# from . import master_type

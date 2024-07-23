@@ -7,4 +7,4 @@ from odoo.exceptions import UserError
 class StockMoveLine(models.Model):
     _inherit = 'stock.move.line'
 
-    is_integrated = fields.Boolean(string='Is Integrated')
+    is_integrated = fields.Boolean(string='Is Integrated', readonly=True, tracking=True)

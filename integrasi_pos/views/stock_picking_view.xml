@@ -11,6 +11,21 @@
             <field name="is_integrated"/>
             <field name="vit_trxid"/>
             <field name="target_location"/>
+            <field name="targets"/>
+        </xpath>
+        <xpath expr="//field[@name='target_location']" position="attributes">
+          <attribute name="invisible">picking_type_code != "outgoing"</attribute>
+        </xpath>
+        <xpath expr="//field[@name='targets']" position="attributes">
+          <attribute name="invisible">picking_type_code == "outgoing"</attribute>
+        </xpath>
+        <xpath expr="//field[@name='is_integrated']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='vit_trxid']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
         </xpath>
         <field name="origin" position="attributes">
             <attribute name="readonly">0</attribute>
