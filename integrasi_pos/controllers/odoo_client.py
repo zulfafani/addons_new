@@ -6,8 +6,9 @@ import urllib.request
 class OdooClient:
 
     # Konstruktor
-    def __init__(self, url, db, username, password):
+    def __init__(self, url, server_name, db, username, password):
         self.url = url
+        self.server_name = server_name
         self.db = db
         self.username = username
         self.password = password

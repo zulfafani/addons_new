@@ -1,4 +1,7 @@
-id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_log_note,access_log.note,model_log_note,base.group_user,1,1,1,1
 access_master_warehouse,access_master.warehouse,model_master_warehouse,base.group_user,1,1,1,1
 access_manual_sync,access_manual.sync,model_manual_sync,base.group_user,1,1,1,1
+access_pos_cashier_log,access_pos.cashier.log,model_pos_cashier_log,base.group_user,1,1,1,1
+access_end_shift,access_end.shift,model_end_shift,base.group_user,1,1,1,1
+access_end_shift_line,access_end.shift.line,model_end_shift_line,base.group_user,1,1,1,1

@@ -7,3 +7,4 @@ class LoyaltyProgramInherit(models.Model):
 
     is_integrated = fields.Boolean(string="Integrated", default=False)
     vit_trxid = fields.Char(string="Transaction ID", default=False)
+    id_mc = fields.Char(string="ID MC", default=False)

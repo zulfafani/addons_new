@@ -4,4 +4,5 @@ from . import data_transaksi
 from . import data_transaksiMCtoSS
 # from . import master_main
 from . import odoo_client
+from . import post_data_pos
 # from . import manual_sync_main  

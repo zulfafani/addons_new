@@ -9,8 +9,13 @@
       <field name="arch" type="xml">
         <xpath expr="//field[@name='discount_max_amount']" position="after">
             <field name="vit_trxid"/>
+            <field name="id_mc"/>
         </xpath>
         <xpath expr="//field[@name='vit_trxid']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>

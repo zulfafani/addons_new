@@ -9,8 +9,13 @@
         <xpath expr="//field[@name='config_id']" position="after">
             <field name="is_updated"/>
             <field name="name_session_pos"/>
+            <field name="id_mc"/>
         </xpath>
         <xpath expr="//field[@name='is_updated']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>
