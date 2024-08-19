@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Form View -->
+        <record id="view_print_barcode_form" model="ir.ui.view">
+            <field name="name">print.barcode.form</field>
+            <field name="model">print.barcode</field>
+            <field name="arch" type="xml">
+                <form string="Print Barcode">
+                    <header>
+                        <button name="action_print_barcode" string="Generate Barcode PDF" type="object" class="oe_highlight"/>
+                        <button name="action_print_to_printer" string="Print to Printer" type="object" class="btn-primary" invisible="barcode_pdf == False"/>
+                        <!-- <button name="action_tarik_barang_masuk" string="Barang Masuk" type="object" class="btn-primary" invisible="start_date == False"/> -->
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_pdf" type="object" class="oe_stat_button" icon="fa-file-pdf-o"
+                                    invisible="barcode_pdf == False">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">View PDF</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="barcode_filename" placeholder="Barcode PDF" invisible="barcode_pdf == False"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="pilihan" widget="radio"/>
+                            <field name="barcode_pdf" invisible="1"/>
+                            <field name="doc_type" widget="radio"/>
+                        </group>
+                        
+                        <!-- Add Products section -->
+                        <notebook>
+                            
+                            <!-- Printer Configuration Page -->
+                            <page string="Printer Configuration" invisible="pilihan not in ('print')">
+                                <group>
+                                    <!-- <field name="nama_printer"/> -->
+                                    <field name="printer_list"/>
+                                    <field name="size_kertas"/>
+                                    <field name="lebar"/>
+                                    <field name="tinggi"/>
+                                    <field name="orientasi" widget="radio"/>
+                                </group>
+                            </page>
+                            
+                            <!-- Margin Configuration Page -->
+                            <page string="Margin Configuration" invisible="pilihan not in ('margin')">
+                                <group>
+                                    <field name="margin_atas"/>
+                                    <field name="margin_bawah"/>
+                                    <field name="margin_kiri"/>
+                                    <field name="margin_kanan"/>
+                                    <field name="label" widget="radio"/>
+                                    <field name="jumlah_baris"/>
+                                </group>
+                            </page>
+                            
+                            <!-- Barcode Settings Page -->
+                            <page string="Barcode Settings" invisible="pilihan not in ('setting')">
+                                <group>
+                                    <field name="jumlah_kolom"/>
+                                    <field name="jarak_antar_kolom"/>
+                                    <field name="tinggi_baris"/>
+                                    <field name="lebar_kolom"/>
+                                    <field name="jumlah_karakter"/>
+                                </group>
+                            </page>
+                            
+                            <!-- Font Configuration Page -->
+                            <page string="Font Configuration" invisible="pilihan not in ('font')">
+                                <group>
+                                    <group string="Font Sizes">
+                                        <field name="available_fonts"/>
+                                        <field name="available_fonts_barcode"/>
+                                        <field name="ukuran_font_barcode"/>
+                                        <field name="ukuran_font_kode"/>
+                                        <field name="ukuran_font_nama"/>
+                                        <field name="ukuran_font_harga"/>
+                                    </group>
+                                    <group string="Positions">
+                                        <field name="posisi_barcode"/>
+                                        <field name="posisi_kode"/>
+                                        <field name="tinggi_kode"/>
+                                        <field name="posisi_harga"/>
+                                        <field name="posisi_nama_barang"/>
+                                        <field name="tinggi_nama_barnag"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <!-- Product List Page -->
+                            <page string="Products">
+                                <field name="product_line_ids">
+                                    <tree editable="bottom">
+                                        <field name="product_id" required="1" width="200"/>
+                                        <field name="product_name" readonly="1" width="300"/>
+                                        <field name="jumlah_copy" width="100"/>
+                                        <field name="harga_jual" width="150"/>
+                                        <field name="tanggal_masuk" width="150"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Tree View -->
+        <record id="view_print_barcode_tree" model="ir.ui.view">
+            <field name="name">print.barcode.tree</field>
+            <field name="model">print.barcode</field>
+            <field name="arch" type="xml">
+                <tree string="Print Barcode">
+                    <field name="pilihan"/>
+                    <field name="nama_printer"/>
+                    <field name="size_kertas"/>
+                    <field name="barcode_filename"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_print_barcode" model="ir.actions.act_window">
+            <field name="name">Print Barcode</field>
+            <field name="res_model">print.barcode</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first barcode configuration
+                </p>
+            </field>
+        </record>
+
+        <!-- Action Window for Printing Barcodes from Product -->
+        <record id="action_print_product_barcode" model="ir.actions.act_window">
+            <field name="name">Print Product Barcodes</field>
+            <field name="res_model">print.barcode</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'default_pilihan': 'print'}</field>
+        </record>
+
+        <!-- Add "Print Barcode" button to product form view -->
+        <record id="product_template_form_view_barcode_print" model="ir.ui.view">
+            <field name="name">product.template.form.barcode.print</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_form_view"/>
+            <field name="arch" type="xml">
+                <div name="button_box" position="inside">
+                    <button class="oe_stat_button" name="%(action_print_product_barcode)d" 
+                            type="action" icon="fa-barcode" string="Print Barcode"
+                            context="{'default_active_ids': active_ids}">
+                    </button>
+                </div>
+            </field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_print_barcode"
+            name="Print Barcode"
+            action="action_print_barcode"
+            parent="point_of_sale.menu_point_config_product"
+            sequence="4"/>
+    </data>
+</odoo>

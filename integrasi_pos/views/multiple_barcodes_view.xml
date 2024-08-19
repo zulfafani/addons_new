@@ -1,0 +1,33 @@
+<odoo>
+  <data>
+    <record id="view_multiple_barcode_tree" model="ir.ui.view">
+        <field name="name">multiple.barcode.tree</field>
+        <field name="model">multiple.barcode</field>
+        <field name="type">tree</field>
+        <field name="priority" eval="8"/>
+        <field name="arch" type="xml">
+            <tree string="Multiple Barcodes Configuration" editable="bottom">
+                <field name="barcode"/>
+                <field name="product_id"/>
+                <field name="id_mc"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- actions opening views on models -->
+    <record id="action_multiple_barcode" model="ir.actions.act_window">
+        <field name="name">Multiple Barcode</field>
+        <field name="res_model">multiple.barcode</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <menuitem 
+        id="menu_multiple_barcode"
+        name="Multiple Barcodes"
+        action="action_multiple_barcode"
+        parent="point_of_sale.menu_point_config_product"
+        sequence="4"/>
+
+
+  </data>
+</odoo>

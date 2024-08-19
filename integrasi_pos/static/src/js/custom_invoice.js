@@ -1,13 +1,19 @@
 /** @odoo-module **/
 
-import { registry } from "@web/core/registry";
 import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import { patch } from "@web/core/utils/patch";
 
-class CustomPaymentScreen extends PaymentScreen {
+patch(PaymentScreen.prototype, {
     onMounted() {
         super.onMounted();
-        this.currentOrder.set_to_invoice(true);
+        // Menjalankan toggleIsToInvoice secara otomatis
+        if (!this.currentOrder.is_to_invoice()) {
+            this.toggleIsToInvoice();
+        }
+        
+        // Kode existing untuk payment method
+        if (this.payment_methods_from_config.length == 1) {
+            this.addNewPaymentLine(this.payment_methods_from_config[0]);
+        }
     }
-}
-
-registry.category("pos_screens").add("PaymentScreen", CustomPaymentScreen, { force: true });
+});

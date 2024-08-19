@@ -1,0 +1,23 @@
+.barcode_autofocus {
+    /* Base styles for the barcode input */
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 14px;
+}
+
+.barcode_autofocus:focus {
+    outline: none;
+    border-color: #7C7BAD;
+    box-shadow: 0 0 0 1px #7C7BAD;
+}
+
+/* Animation for the blinking effect */
+@keyframes blink-border {
+    0% { border-color: #7C7BAD; box-shadow: 0 0 0 1px #7C7BAD; }
+    50% { border-color: #875A7B; box-shadow: 0 0 5px 2px #875A7B; }
+    100% { border-color: #7C7BAD; box-shadow: 0 0 0 1px #7C7BAD; }
+}
+
+.blink-border {
+    animation: blink-border 1s ease-in-out 3;
+}

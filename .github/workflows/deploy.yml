@@ -21,12 +21,10 @@ jobs:
     - name: Copy files via SSH
       run: |
         rsync -avz -e "ssh -o StrictHostKeyChecking=no -p 21787" --exclude '.git*' ./ root@116.254.101.213:/vit/odoo/odoo17/addons_new
-        rsync -avz -e "ssh -o StrictHostKeyChecking=no -p 23567" --exclude '.git*' ./ root@116.254.101.213:/vit/odoo/odoo17/addons_new
 
     - name: Restart Odoo Service
       run: |
         echo "${{ secrets.SSH_PASSWORD }}" | ssh -o StrictHostKeyChecking=no -p 21787 root@116.254.101.213 'sudo -S systemctl restart odoo17dev.service'
-        echo "${{ secrets.SSH_PASSWORD }}" | ssh -o StrictHostKeyChecking=no -p 23567 root@116.254.101.213 'sudo -S systemctl restart odoo17dev.service'
 
     # - name: Run Python Script
     #   run: |

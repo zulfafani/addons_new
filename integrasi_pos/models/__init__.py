@@ -3,6 +3,7 @@ from . import res_partner
 from . import stock_picking
 from . import pos_session
 from . import pos_order
+# from . import pos_order_line
 from . import master_warehouse
 from . import stock_move_line
 from . import manual_sync
@@ -14,4 +15,40 @@ from . import loyalty_rule
 from . import loyalty_reward
 from . import purchase_order
 from . import account_move
+from . import account_move_line
+from . import product_template
+from . import res_users
+from . import hr_employee
+from . import account_tax
+from . import pos_payment_method
+from . import ir_sequence
+from . import pos_category
+from . import product_category
+from . import product_pricelist
+from . import res_partner_title
+from . import stock_location
+from . import stock_picking_type
+from . import uom_category
+from . import uom_uom
+from . import res_currency
+from . import account_journal
+from . import tes_maxworkers
+from . import product_pricelist_item
+from . import loyalty_card
+from . import pos_cashier_log
+from . import end_shift
+from . import account_account
+from . import inventory_counting
+from . import transfer_request
+from . import res_config_settings
+from . import partner_pin_code
+from . import report_stock
+from . import barcode_settings
+from . import barcode_wizard
+from . import multiple_barcode
+from . import mrp_unbuild_line
+from . import stock_warehouse
+from . import product_tag
+from . import res_partner_category
+# from . import print_barcode
 # from . import master_type

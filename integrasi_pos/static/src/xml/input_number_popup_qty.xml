@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="integrasi_pos.InputNumberPopUpQty" owl="1">
+        <div class="popup popup-number custom-numpad-popup">
+            <main class="body">
+                <div class="popup-title">
+                    <h3><t t-esc="props.title or 'Input Nilai Angka'"/></h3>
+                </div>
+
+                <div class="popup-body mb-2">
+                    <t t-if="props.body">
+                        <p><t t-esc="props.body"/></p>
+                    </t>
+                </div>
+
+                <div class="input-container my-2">
+                    <input
+                        type="text"
+                        t-att-value="state.inputValue"
+                        t-on-input="handleTyping"
+                        t-ref="numberInput"
+                        placeholder="Masukkan angka"
+                        class="form-control"
+                    />
+                </div>
+
+                <div class="numpad-grid mb-3">
+                    <button t-on-click="() => handleKeyClick('1')">1</button>
+                    <button t-on-click="() => handleKeyClick('2')">2</button>
+                    <button t-on-click="() => handleKeyClick('3')">3</button>
+                    <button t-on-click="() => handleKeyClick('4')">4</button>
+                    <button t-on-click="() => handleKeyClick('5')">5</button>
+                    <button t-on-click="() => handleKeyClick('6')">6</button>
+                    <button t-on-click="() => handleKeyClick('7')">7</button>
+                    <button t-on-click="() => handleKeyClick('8')">8</button>
+                    <button t-on-click="() => handleKeyClick('9')">9</button>
+                    <button t-on-click="() => handleKeyClick('.')">.</button>
+                    <button t-on-click="() => handleKeyClick('0')">0</button>
+                    <button t-on-click="removeLastChar">⌫</button>
+                </div>
+
+                <div class="button-container d-flex justify-content-between">
+                    <button class="btn btn-success fw-bold" t-on-click="confirmInput">OK</button>
+                    <button class="btn btn-danger fw-bold" t-on-click="cancel">Batal</button>
+                </div>
+            </main>
+        </div>
+    </t>
+</templates>

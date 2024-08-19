@@ -1,31 +1,15 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Log Note Integrasi",
-    'version': '1.0',
-    'category': 'Uncategorized',  # Sales/CRM Kategori modul. Modul ini termasuk dalam kategori "Sales/CRM"
-    # 'sequence': 15,                            #Urutan tampilan modul dalam daftar aplikasi.
-
+    'name': "POS-VIT-STORE",
+    'version': '17.0.1.0.0',
+    'category': 'Point Of sale', 
     'summary': """                              
-        Short (1 phrase/line) summary of the module's purpose, used as
-        subtitle on modules listing or apps.openerp.com""",
-    # Ringkasan singkat tentang fungsionalitas modul/ modul ini untuk apa
-
+        Modul Integrasi POS-VIT 2.0""",
     'description': """
-        Long description of module's purpose
-    """,  # Deskripsi lebih rinci tentang fungsionalitas modul.
-
-    'author': "My Company",
-    # 'website': "https://www.yourcompany.com",  # URL situs web yang terkait dengan modul
-
-    # Categories can be used to filter modules in modules listing
-    # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
-    # for the full list
-
-    # Daftar modul yang dibutuhkan untuk diinstal sebelum modul ini dapat diinstal. Modul ini bergantung pada modul-modul didalam depends
-    'depends': ['web', 'base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty', 'purchase'],  # ['base', 'sale', 'mrp'],
-
-    # always loaded
-    # Daftar file XML yang menyediakan data dan konfigurasi tambahan untuk modul ini. Ini termasuk file keamanan, data, panduan, tampilan, dan lain-lain.
+        POS-VIT 2.0 Store
+    """,
+    'author': "Visi Intech",
+    'depends': ['web', 'base', 'sale', 'stock', 'point_of_sale', 'account', 'loyalty', 'purchase', 'mail', 'mrp'], 
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_view.xml',
@@ -38,26 +22,125 @@
         'views/stock_move_line_view.xml',
         'views/pos_config_view.xml',
         'data/sequence.xml',
+        'data/sequence_end_shift.xml',
+        'data/sequence_inventory_counting.xml',
+        'data/sequence_transfer_request.xml',
         'views/loyalty_program_view.xml',
         'views/favicon.xml',
         'views/views_loyalty_reward.xml',
         'views/views_loyalty_rule.xml',
         'views/purchase_order_view.xml',
-        'views/views_account_move.xml'
-
+        'views/views_account_move.xml',
+        'views/product_template.xml',
+        'views/res_users_view.xml',
+        'views/hr_employee_view.xml',
+        'views/account_tax_views.xml',
+        'views/pos_payment_method_views.xml',
+        'views/ir_sequence_view.xml',
+        'views/pos_category_view.xml',
+        'views/product_category_view.xml',
+        'views/product_pricelist_view.xml',
+        'views/stock_location_view.xml',
+        'views/stock_picking_type_view.xml',
+        'views/uom_category_view.xml',
+        'views/uom_uom_view.xml',
+        'views/res_currency_views.xml',
+        'views/account_journal_view.xml',
+        'views/loyalty_card_view.xml',
+        'views/pos_cashier_log_view.xml',
+        'views/end_shift_view.xml',
+        'views/account_account_view.xml',
+        'views/pos_config_views_image.xml',
+        'views/account_move_view.xml',
+        'views/inventory_stock_view.xml',
+        'views/inventory_counting_view.xml',
+        'views/transfer_request_view.xml',
+        'views/res_config_settings_view.xml',
+        'views/report_stock_view.xml',
+        'views/barcode_config_views.xml',
+        'views/barcode_wizard_view.xml',
+        'views/mrp_unbuild_line_view.xml',
+        # 'views/print_barcode_view.xml',
+        # 'views/multiple_barcodes_view.xml',
+        'views/product_product_view.xml',
+        'views/stock_warehouse_view.xml',
+        # 'views/favicon_pos.xml',
+        # 'views/printer_list_view.xml',
     ],
     'assets': {
-        'web.assets_backend': [
-            'integrasi_pos/static/src/css/theme_custom.css',
-        ],
         'point_of_sale._assets_pos': [
+            'integrasi_pos/static/src/xml/button_end_screen_shift.xml',
+            'integrasi_pos/static/src/xml/pop_up_succes.xml',
+            'integrasi_pos/static/src/xml/navbar_logo.xml',
+            'integrasi_pos/static/src/xml/custom_numpad_popup.xml',
+            'integrasi_pos/static/src/xml/discount_amount_popup.xml',
+            'integrasi_pos/static/src/xml/button_hold_transaction.xml',
+            'integrasi_pos/static/src/xml/close_session_clear.xml',
+            'integrasi_pos/static/src/xml/selection_popup_barcode.xml',
+            'integrasi_pos/static/src/xml/input_number_popup_multiplebarcode.xml',
+            'integrasi_pos/static/src/xml/input_number_popup_qty.xml',
+            'integrasi_pos/static/src/xml/void_sales_button.xml',
+            'integrasi_pos/static/src/xml/cash_drawer_button.xml',
+            'integrasi_pos/static/src/xml/recall_input_popup.xml',
+            'integrasi_pos/static/src/xml/receipt_template_inherit.xml',
+            'integrasi_pos/static/src/xml/input_card_number_popup.xml',
+            # 'integrasi_pos/static/src/xml/receipt_printing_cardnumber.xml',
             'integrasi_pos/static/src/js/custom_invoice.js',
             'integrasi_pos/static/src/js/get_customer.js',
             'integrasi_pos/static/src/js/disable_download.js',
+            'integrasi_pos/static/src/js/automated_print.js',
+            'integrasi_pos/static/src/js/cashier_login_custom.js',
+            'integrasi_pos/static/src/js/end_shift_session.js',
+            'integrasi_pos/static/src/js/pop_up_end_shift.js',
+            'integrasi_pos/static/src/js/pop_up_error.js',
+            'integrasi_pos/static/src/js/pos_title.js',
+            'integrasi_pos/static/src/js/custom_numpad_popup.js',
+            'integrasi_pos/static/src/js/override_qty_button.js',
+            'integrasi_pos/static/src/js/reprint_invoice.js',
+            'integrasi_pos/static/src/js/refund_button_inherit.js',
+            'integrasi_pos/static/src/js/refund_to_product_screen.js',
+            'integrasi_pos/static/src/js/close_session.js',
+            'integrasi_pos/static/src/js/barcode_override.js',
+            'integrasi_pos/static/src/js/barcodeparser_patch.js',
+            'integrasi_pos/static/src/js/timbangan_product_screen.js',
+            'integrasi_pos/static/src/js/discount_amount_popup.js',
+            'integrasi_pos/static/src/js/discount_button.js',
+            'integrasi_pos/static/src/js/hold_transaction.js',
+            'integrasi_pos/static/src/js/product_screen_override.js',
+            'integrasi_pos/static/src/js/selection_popup_barcode.js',
+            'integrasi_pos/static/src/js/product_list.js',
+            'integrasi_pos/static/src/js/pos_store_load.js',
+            # 'integrasi_pos/static/src/js/pos_without_reload.js',
+            'integrasi_pos/static/src/js/order_line_reward_sort.js',
+            'integrasi_pos/static/src/js/input_number_popup_multiplebarcode.js',
+            # 'integrasi_pos/static/src/js/update_pos_db.js',
+            'integrasi_pos/static/src/js/input_number_popup_qty.js',
+            'integrasi_pos/static/src/js/void_sales_button.js',
+            'integrasi_pos/static/src/js/open_cash_drawer.js',
+            'integrasi_pos/static/src/js/cash_drawer_button.js',
+            'integrasi_pos/static/src/js/receipt_printing_cardnumber.js',
+            'integrasi_pos/static/src/js/recall_input_popup.js',
+            'integrasi_pos/static/src/js/pole_display.js',
+            'integrasi_pos/static/src/js/refund_to_product_screen.js',
+            'integrasi_pos/static/src/js/receipt_product_name.js',
+            # 'integrasi_pos/static/src/js/local_storage_helper.js',
+            # 'integrasi_pos/static/src/js/loyalty_program_model.js',
+            # 'integrasi_pos/static/src/js/product_loading_pos.js',
+            'integrasi_pos/static/src/css/pop_up.css',
+            'integrasi_pos/static/src/css/custom_numpad.css',
+            # 'integrasi_pos/static/src/css/selection_pop_up_barcode.css',
+        ],
+        'web.assets_backend': [
+            'integrasi_pos/static/src/js/web_title.js',
+            "integrasi_pos/static/lib/html5-qrcode.min.js",
+            'integrasi_pos/static/src/js/barcode_scanner.js',
+            'integrasi_pos/static/src/xml/barcode_scanner_template.xml',
+            # 'integrasi_pos/static/src/js/auto_focus.js',
+            # 'integrasi_pos/static/src/xml/auto_focus_widget.xml',
+            'integrasi_pos/static/src/css/theme_custom.css',
         ],
     },
-    'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,
-    'application': False,
+    'application': True,
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="point_of_sale.OrderReceipt" owl="1">
+        <!-- Existing Order Receipt Content Here -->
+        <div class="pos-receipt">
+            <!-- ... existing elements ... -->
+
+            <!-- Custom Card Number Display -->
+            <t t-if="order.card_number">
+                <div class="mt-2">
+                    <strong>Nomor Kartu:</strong>
+                    <span t-esc="order.card_number" />
+                </div>
+            </t>
+
+
+            <!-- ... rest of receipt ... -->
+        </div>
+    </t>
+</templates>

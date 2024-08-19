@@ -7,7 +7,7 @@
             <field name="inherit_id" ref="point_of_sale.pos_config_view_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//div[hasclass('o_settings_container')][1]" position="after">
-                    <div class="col-12 col-lg-6 o_setting_box" title="Default Cusotmer in POS Order.">
+                    <div class="col-12 col-lg-6 o_setting_box" title="Default Customer in POS Order.">
                         <div class="o_setting_right_pane">
                             <label for="default_partner_id"/>
                             <div class="text-muted">
@@ -18,6 +18,51 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-12 col-lg-6 o_setting_box" title="ID MC in POS Order.">
+                        <div class="o_setting_right_pane">
+                            <label for="id_mc"/>
+                            <div class="text-muted">
+                                ID MC.
+                            </div>
+                            <div class="content-group mt16">
+                                <field name="id_mc" colspan="4" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box" title="Integrated.">
+                        <div class="o_setting_right_pane">
+                            <label for="is_integrated"/>
+                            <div class="text-muted">
+                                Integrated.
+                            </div>
+                            <div class="content-group mt16">
+                                <field name="is_integrated" colspan="4" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box" title="Updated.">
+                        <div class="o_setting_right_pane">
+                            <label for="is_updated"/>
+                            <div class="text-muted">
+                                Updated.
+                            </div>
+                            <div class="content-group mt16">
+                                <field name="is_updated" colspan="4" nolabel="1"/>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+                <xpath expr="//field[@name='id_mc']" position="attributes">
+                    <attribute name="force_save">1</attribute>
+                    <attribute name="readonly">True</attribute>
+                </xpath>
+                <xpath expr="//field[@name='is_integrated']" position="attributes">
+                    <attribute name="force_save">1</attribute>
+                    <attribute name="readonly">True</attribute>
+                </xpath>
+                <xpath expr="//field[@name='is_updated']" position="attributes">
+                    <attribute name="force_save">1</attribute>
+                    <attribute name="readonly">True</attribute>
                 </xpath>
             </field>
         </record>

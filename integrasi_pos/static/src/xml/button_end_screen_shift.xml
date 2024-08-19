@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <!-- Button to trigger the popup -->
+    <t t-name="integrasi_pos.EndShiftSessionButton" owl="1">
+        <div class="control-button o_pricelist_button btn btn-light rounded-0 fw-bolder"
+             t-on-click="onClick">
+            <i class="fa fa-sign-out me-1" role="img" aria-label="Close Shift"/>
+            Close Shift
+        </div>
+    </t>
+
+    <!-- Popup for ending shift session -->
+    <t t-name="integrasi_pos.EndShiftSessionButtonPopup" owl="1">
+        <div class="end-shift-session-popup">
+            <!-- Header Section -->
+            <header>
+                <h2><t t-esc="props.title"/></h2>
+            </header>
+
+            <!-- Popup Content Section -->
+            <div class="popup-content">
+                <select class="input-field" t-ref="cashierField" readonly="readonly" disabled="disabled">
+                    <t t-foreach="state.cashiers" t-as="cashier" t-key="cashier.id">
+                        <option t-att-value="cashier.id" t-att-selected="cashier.id === state.currentCashierId">
+                            <t t-esc="cashier.name"/>
+                        </option>
+                    </t>
+                </select>
+                <input class="input-field" 
+                       type="datetime-local" 
+                       placeholder="Starting Shift Date" 
+                       step="1" 
+                       t-ref="startShiftField" 
+                       readonly="readonly"/>
+                <input class="input-field" 
+                       type="datetime-local" 
+                       placeholder="Ending Shift Date" 
+                       step="1" 
+                       t-ref="endingShiftField" 
+                       readonly="readonly"/>
+            </div>
+
+            <!-- Footer Section with buttons -->
+            <footer class="footer">
+                <button class="button confirm" t-on-click="confirm"><t t-esc="props.confirmText"/></button>
+                <button class="button cancel" t-on-click="cancel"><t t-esc="props.cancelText"/></button>
+            </footer>
+        </div>
+    </t>
+</templates>

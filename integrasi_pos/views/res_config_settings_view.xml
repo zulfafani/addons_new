@@ -1,0 +1,104 @@
+<odoo>
+    <record id="pos_manager_validation_res_config_settings" model="ir.ui.view">
+        <field name="name">pos.manager.validation.res.config.settings.view.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
+                <block title="PoS Manager Validation" id="pos_manager_validation_section">
+                    <setting id="manager_validation" string="Enable Manager Validation" 
+                        help="If enabled, certain operations in PoS will require manager approval.">
+                        <field name="manager_validation"/>
+                    </setting>
+
+                    <!-- Field Manager ID yang hanya muncul jika Manager Validation diaktifkan -->
+                    <setting id="manager_id" string="Manager" 
+                        help="Select the manager responsible for PoS validation."
+                        invisible="manager_validation != True">
+                        <field name="manager_id"/>
+                    </setting>
+                    <setting id="validate_close_session" string="Closing Session"
+                        help="Require manager approval for closing the POS session."
+                        invisible="manager_validation != True">
+                        <field name="validate_close_session"/>
+                    </setting>
+                    <setting id="validate_order_line_deletion" string="Void Item"
+                        help="Require manager approval for deleting an order line."
+                        invisible="manager_validation != True">
+                        <field name="validate_order_line_deletion"/>
+                    </setting>
+                    <setting id="validate_discount" string="Apply Discount"
+                        help="Require manager approval before applying discounts."
+                        invisible="manager_validation != True">
+                        <field name="validate_discount"/>
+                    </setting>
+                    <setting id="validate_price_change" string="Price Change"
+                        help="Require manager approval for changing product prices."
+                        invisible="manager_validation != True">
+                        <field name="validate_price_change"/>
+                    </setting>
+                    <setting id="validate_add_remove_quantity" string="Add/Remove Quantity"
+                        help="Require manager approval for changing the quantity of a product."
+                        invisible="manager_validation != True">
+                        <field name="validate_add_remove_quantity"/>
+                    </setting>
+                    <setting id="validate_end_shift" string="End Shift"
+                        help="Require manager approval for using end shift."
+                        invisible="manager_validation != True">
+                        <field name="validate_end_shift"/>
+                    </setting>
+                    <setting id="validate_refund" string="Refund"
+                        help="Require manager approval for using refund."
+                        invisible="manager_validation != True">
+                        <field name="validate_refund"/>
+                    </setting>
+                    <setting id="validate_discount_amount" string="Discount Amount"
+                        help="Require manager approval for using Discount Amount."
+                        invisible="manager_validation != True">
+                        <field name="validate_discount_amount"/>
+                    </setting>
+                    <setting id="validate_void_sales" string="Void Sales"
+                        help="Require manager approval for reset order."
+                        invisible="manager_validation != True">
+                        <field name="validate_void_sales"/>
+                    </setting>
+
+                    <!-- <setting id="one_time_password" string="One Time Password for an Order"
+                        help="Require a one-time password for processing specific PoS orders.">
+                        <field name="one_time_password"/>
+                    </setting> -->
+                </block>
+            </app>
+
+            <!-- Member/Schedule Promo -->
+            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
+                <block title="Member/Schedule Promo" id="pos_member_schedule">
+                    <setting id="member_schedule_activate" string="Member/Schedule"
+                        help="Activate Member/Schedule.">
+                        <field name="validate_member_schedule"/>
+                    </setting>
+                </block>
+            </app>
+
+            <!-- Member/Schedule Promo -->
+            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
+                <block title="Prefix Customer" id="pos_member_prefix_customer">
+                    <setting id="member_schedule_activate" string="Prefix Customer"
+                        help="Activate Prefix Customer.">
+                        <field name="validate_prefix_customer"/>
+                    </setting>
+                </block>
+            </app>
+
+            <!-- MULTIPLE BARCODE -->
+            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
+                <block title="Multiple Barcode" id="pos_timbangan_section">
+                    <setting id="multiple_barcode_activate" string="Multiple Barcode"
+                        help="POSVIT 2.0 Multiple Barcode.">
+                        <field name="multiple_barcode_activate"/>
+                    </setting>
+                </block>
+            </app>
+        </field>
+    </record>
+</odoo>

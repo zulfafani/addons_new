@@ -1,0 +1,116 @@
+.sales-person-popup {
+    background: white;
+    width: 400px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.sales-person-popup header {
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.sales-person-popup header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.sales-person-popup .popup-content {
+    padding: 20px 0;
+}
+
+.sales-person-popup .input-field {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #fff;
+}
+
+.sales-person-popup select.input-field {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 1em;
+    padding-right: 40px;
+}
+
+.sales-person-popup .footer {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid #e5e5e5;
+    margin-top: 20px;
+}
+
+.sales-person-popup .button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    min-width: 100px;
+}
+
+.sales-person-popup .button.confirm {
+    background-color: #00a09d;
+    color: white;
+}
+
+.sales-person-popup .button.confirm:hover {
+    background-color: #008784;
+}
+
+.sales-person-popup .button.cancel {
+    background-color: #6c757d;
+    color: white;
+}
+
+.sales-person-popup .button.cancel:hover {
+    background-color: #5a6268;
+}
+
+/* Animasi untuk popup */
+@keyframes popup-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sales-person-popup {
+    animation: popup-fade-in 0.3s ease-out;
+}
+
+/* Responsive design */
+@media screen and (max-width: 480px) {
+    .sales-person-popup {
+        width: 90%;
+        margin: 0 auto;
+    }
+    
+    .sales-person-popup .footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .sales-person-popup .button {
+        width: 100%;
+    }
+}

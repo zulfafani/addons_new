@@ -1,0 +1,33 @@
+<odoo>
+  <data>
+
+    <!-- form view-->
+    <record id="view_product_inherit_form" model="ir.ui.view">
+      <field name="name">product.template.form</field>
+      <field name="model">product.template</field>
+      <field name="inherit_id" ref="product.product_template_only_form_view"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='default_code']" position="after">
+            <field name="id_mc"/>
+            <field name="vit_sub_div"/>
+            <field name="vit_item_kel"/>
+            <field name="vit_item_type"/>
+        </xpath>
+        <xpath expr="//page[@name='invoicing']" position="after">
+            <page string="Barcodes">
+                <field name="multi_barcode_ids">
+                    <tree editable="bottom">
+                        <field name="barcode"/>
+                    </tree>
+                </field>
+            </page>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+      </field>
+    </record>
+
+  </data>
+</odoo>

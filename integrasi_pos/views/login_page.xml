@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="remove_powered_by_odoo" inherit_id="web.login_layout">
+        <xpath expr="//div[@class='oe_login_footer']" position="replace">
+            <!-- Menghapus elemen -->
+            <div/>
+        </xpath>
+    </template>
+</odoo>

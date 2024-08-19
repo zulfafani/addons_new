@@ -1,14 +1,23 @@
 {
-    "odoo_db1a": {
-        "url": "https://johann1091-test03-03-stage-14543512.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test03-03-stage-14543512",
-        "username": "admin",
-        "password": "678aa473234c6d7ba5847b5c7a45846c79bf5390"
-    },
     "odoo_db1_mc": {
-        "url": "https://johann1091-test04-mc-14270841.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test04-mc-14270841",
+        "url": "http://116.254.101.240:8069//jsonrpc",
+        "server_name": "MC",
+        "db": "kemchicks-mc",
         "username": "admin",
-        "password": "c4c4be1fe70ffb4e8124739e3a771a8622be770e"
+        "password": "b8014523802719559887d5a06a3341e78b6f1a95"
+    },
+    "odoo_db1_a": {
+        "url": "http://172.16.186.51:8069/jsonrpc",
+        "server_name": "Store 01",
+        "db": "store-pik-live",
+        "username": "admin",
+        "password": "f5f2ead02c2446da0c2fcf238b4825d825b21efc"
+    },
+    "odoo_db2_a": {
+        "url": "http://pos-store.visi-intech.com/jsonrpc",
+        "server_name": "Store 02",
+        "db": "store-02",
+        "username": "admin",
+        "password": "658b2da4bdec6d2dc882a3ac5510476ac006598d"
     }
 }

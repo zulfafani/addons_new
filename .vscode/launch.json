@@ -8,7 +8,7 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            "program": "",
+            "program": "C:\\Users\\abhif\\OneDrive\\Documents\\Development Testing\\zulfa's_code\\addons_new\\integrasi_pos\\controllers\\master_main.py",
             "console": "integratedTerminal"
         }
     ]

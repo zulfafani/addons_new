@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="InventoryStock.BarcodeFocusWidget">
+        <input t-ref="input" 
+               type="text" 
+               class="o_input" 
+               t-att-value="props.value || ''"
+               placeholder="Scan barcode here"
+               t-on-input="(ev) => this.handleInput(ev)"
+               t-on-keydown="(ev) => this.processBarcode(ev)"/>
+    </t>
+</templates>

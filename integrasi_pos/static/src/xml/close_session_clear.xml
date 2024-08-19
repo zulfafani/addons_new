@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="point_of_sale.ClosePosPopup" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
+
+        <!-- Remove Expected and Difference headers -->
+        <xpath expr="//th[.='Expected']" position="replace"/>
+        <xpath expr="//th[.='Difference']" position="replace"/>
+
+        <!-- Remove Cash method Expected & Difference values -->
+        <xpath expr="//td[@t-esc='env.utils.formatCurrency(props.default_cash_details.amount)']" position="replace"/>
+        <xpath expr="//td[@t-esc='env.utils.formatCurrency(getDifference(props.default_cash_details.id))']" position="replace"/>
+
+        <!-- Remove Bank method Expected & Difference values -->
+        <xpath expr="//td[@t-esc='env.utils.formatCurrency(pm.amount)']" position="replace"/>
+        <xpath expr="//td[@t-esc='env.utils.formatCurrency(getDifference(pm.id))']" position="replace"/>
+
+    </t>
+</templates>
