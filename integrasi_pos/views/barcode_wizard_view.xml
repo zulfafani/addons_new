@@ -1,0 +1,38 @@
+<!-- views/barcode_wizard_view.xml -->
+<odoo>
+    <record id="view_inventory_barcode_wizard_form" model="ir.ui.view">
+        <field name="name">inventory.barcode.wizard.form</field>
+        <field name="model">inventory.barcode.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Scan Barcodes">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Scan product barcodes to add them to inventory counting.
+                        The products will be automatically added to the counting list.
+                    </div>
+                    <group>
+                        <field name="inventory_stock_id" invisible="1"/>
+                        <field name="location_id" readonly="1"/>
+                        <field name="barcode_input" default_focus="1" placeholder="Scan barcode here"/>
+                    </group>
+                    <notebook>
+                        <page string="Scanned Products">
+                            <field name="product_ids">
+                                <tree>
+                                    <field name="default_code"/>
+                                    <field name="barcode"/>  <!-- Changed from barcode_input to barcode -->
+                                    <field name="name"/>
+                                    <field name="uom_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_done" string="Done" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

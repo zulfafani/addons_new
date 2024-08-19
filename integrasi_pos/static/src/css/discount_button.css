@@ -1,0 +1,11 @@
+/** @odoo-module **/
+
+.o_pos .control-button {
+    padding: 8px 10px;
+    font-size: 14px;
+}
+
+.o_pos .control-button .fa-minus-square {
+    margin-right: 6px;
+    color: #ff4444;
+}

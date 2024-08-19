@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <t t-name="integrasi_pos.BarcodeScannerTemplate" owl="1">
+    <div>
+      <!-- Video Scanner Container -->
+      <div t-ref="reader" t-att-id="'reader'" style="width:100%;max-width:500px;height:auto;border:1px solid #ccc;"></div>
+      
+      <!-- Stop Button -->
+      <button type="button"
+              class="btn btn-danger mt-2"
+              t-on-click="stopCamera"
+              style="margin-top: 10px;">
+        Stop Kamera
+      </button>
+    </div>
+  </t>
+</templates>

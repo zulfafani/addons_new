@@ -10,12 +10,37 @@
         <xpath expr="//field[@name='date_to']" position="after">
             <field name="is_integrated"/>
             <field name="vit_trxid"/>
+            <field name="id_mc"/>
+        </xpath>
+        <xpath expr="//page[@name='rules_rewards']" position="after">
+            <page string="Schedules" name="schedules">
+                <field name="schedule_ids">
+                    <tree editable="bottom">
+                        <field name="days"/>
+                        <field name="time_start" widget="time"/>
+                        <field name="time_end" widget="time"/>
+                    </tree>
+                </field>
+            </page>
+        </xpath>
+        <xpath expr="//page[@name='rules_rewards']" position="after">
+            <page string="Member Promo" name="member">
+                <field name="member_ids">
+                    <tree editable="bottom">
+                        <field name="member_pos"/>
+                    </tree>
+                </field>
+            </page>
         </xpath>
         <xpath expr="//field[@name='is_integrated']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>
         <xpath expr="//field[@name='vit_trxid']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>

@@ -1,0 +1,54 @@
+<odoo>
+  <data>
+    <record id="barcode_config_settings" model="ir.ui.view">
+        <field name="name">barcode.config.tree</field>
+        <field name="model">barcode.config</field>
+        <field name="type">tree</field>
+        <field name="priority" eval="8"/>
+        <field name="arch" type="xml">
+            <tree string="Barcode Config">
+                <field name="prefix_timbangan"/>
+                <field name="digit_awal"/>
+                <field name="digit_akhir"/>
+                <field name="panjang_barcode"/>
+                <field name="multiple_barcode_activate"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.ui.view" id="view_barcode_config">
+        <field name="name">barcode.config.form</field>
+        <field name="model">barcode.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="prefix_timbangan"/>
+                            <field name="digit_awal"/>
+                            <field name="digit_akhir"/>
+                            <field name="panjang_barcode"/>
+                            <field name="multiple_barcode_activate"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- actions opening views on models -->
+    <record id="action_barcode_config" model="ir.actions.act_window">
+        <field name="name">Timbangan Configuration</field>
+        <field name="res_model">barcode.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Menambahkan menu di bawah Inventory -->
+    <menuitem 
+        id="menu_barcode_config"
+        name="Barcode Configuration"
+        action="action_barcode_config"
+        parent="point_of_sale.menu_point_config_product"
+        sequence="3"/>
+  </data>
+</odoo>

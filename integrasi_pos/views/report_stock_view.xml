@@ -1,0 +1,56 @@
+<odoo>
+  <data>
+
+    <record model="ir.ui.view" id="view_balance_stock_tree">
+      <field name="name">balance.stock.tree</field>
+      <field name="model">balance.stock</field>
+      <field name="arch" type="xml">
+        <tree>
+            <field name="numbering"/>
+            <field name="date_stock"/>
+            <field name="reference"/>
+            <field name="product_id"/>
+            <field name="location_id"/>
+            <field name="location_dest_id"/>
+            <field name="stock_in"/>
+            <field name="stock_out"/>
+            <field name="stock_akhir"/>
+        </tree>
+      </field>
+    </record>
+
+    <!-- Tambahkan search view -->
+    <record id="view_balance_stock_search" model="ir.ui.view">
+      <field name="name">balance.stock.search</field>
+      <field name="model">balance.stock</field>
+      <field name="arch" type="xml">
+        <search string="Stock Ledger">
+          <field name="product_id"/>
+          <field name="location_id"/>
+          <field name="reference"/>
+          <field name="date_stock"/>
+          <group expand="0" string="Group By">
+            <filter string="Product" name="groupby_product" domain="[]" context="{'group_by': 'product_id'}"/>
+            <filter string="Location" name="groupby_location" domain="[]" context="{'group_by': 'location_id'}"/>
+            <filter string="Date" name="groupby_date" domain="[]" context="{'group_by': 'date_stock:day'}"/>
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <record id="balance_stock_action" model="ir.actions.act_window">
+      <field name="name">Stock Ledger</field>
+      <field name="res_model">balance.stock</field>
+      <field name="view_mode">tree</field>
+      <field name="search_view_id" ref="view_balance_stock_search"/>
+    </record>
+
+    <menuitem 
+            id="balance_stock_menu"
+            name="Stock Ledger"
+            parent="stock.menu_warehouse_report"
+            action="balance_stock_action"
+            sequence="7"/>
+
+  </data>
+</odoo>

@@ -9,3 +9,4 @@ class AccountMove(models.Model):
 
     is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
     vit_trxid = fields.Char(string="Transaction ID", default=False, tracking=True)
+    # show_update_fpos = fields.Boolean(string="Show Update Fiscal Position")

@@ -1,66 +1,334 @@
 /* static/src/css/custom_theme.css */
+
 :root {
-    --o-primary: #25AAE1; 
-    --o-primary-hover: #1E91BD; 
-    --o-primary-active: #166E91; 
+    --primary: #2596be;
+    --primary-dark: #1d7596;
+    --primary-light: #3ba7cc;
+    --o-primary: #2596be !important;
+    --o-primary-hover: #1d7596 !important;
+    --o-primary-active: #164d63 !important;
 }
 
+/* Warna Background */
 .o_main_navbar {
-    background-color: var(--o-primary) !important;
+    background-color: var(--primary) !important;
 }
 
-.btn-primary {
-    background-color: var(--o-primary) !important;
-    border-color: var(--o-primary) !important;
+.btn-primary, 
+.btn-fill-primary,
+.bg-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
 }
 
-.btn-primary:hover {
-    background-color: var(--o-primary-hover) !important;
-    border-color: var(--o-primary-hover) !important;
+.btn-primary:hover,
+.btn-fill-primary:hover {
+    background-color: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
 }
 
-.btn-primary:active {
-    background-color: var(--o-primary-active) !important;
-    border-color: var(--o-primary-active) !important;
+/* Warna Text */
+.text-primary,
+.o_main_navbar .o_menu_brand,
+.o_main_navbar .dropdown .dropdown-toggle,
+.o_main_navbar .o_nav_entry {
+    color: #ffffff !important;
 }
 
-.o_main_navbar > ul {
-    padding: 0;
-    margin: 0;
-    list-style: none;
+.btn-primary,
+.btn-fill-primary {
+    color: #ffffff !important;
 }
 
-.o_main_navbar .o_nav_entry, .o_main_navbar .dropdown-toggle {
-    border-color: transparent;
+/* Links */
+a {
+    color: var(--primary);
 }
 
-.o_main_navbar .o_menu_sections .o_nav_entry, .o_main_navbar .o_menu_sections .dropdown-toggle {
-    background: var(--o-primary);
-    border: 1px solid transparent;
+a:hover {
+    color: var(--primary-dark);
 }
 
-.o_main_navbar .o_menu_sections .o_nav_entry:hover, .o_main_navbar .o_menu_sections .dropdown-toggle:hover {
-    background: var(--o-primary-hover);
+/* Form Elements */
+.custom-control-input:checked ~ .custom-control-label::before,
+.custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
 }
 
-.o_main_navbar .o_menu_sections .o_nav_entry:focus, .o_main_navbar .o_menu_sections .dropdown-toggle:focus {
-    background: var(--o-primary-hover);
+/* Sidebar */
+.o_main_navbar .o_menu_sections,
+.o_main_navbar .o_menu_systray {
+    background-color: var(--primary) !important;
 }
 
-.o_main_navbar .o_menu_sections .o_nav_entry:active, .o_main_navbar .o_menu_sections .dropdown-toggle:active {
-    background: var(--o-primary-active);
+/* Buttons in Kanban */
+.o_kanban_view .oe_kanban_card .oe_kanban_action_button,
+.o_kanban_view .oe_kanban_card .o_dropdown_kanban {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
 }
 
-.o_main_navbar .o_menu_sections .dropdown.show > .dropdown-toggle {
-    border-color: var(--o-primary-active);
-    background: var(--o-primary-active);
-    color: #FFFFFF;
+/* List View Header */
+/* .o_list_view thead {
+    background-color: var(--primary) !important;
 }
 
-/* .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab:hover, .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab.selected {
-    color: var(--o-primary) !important;
+.o_list_view thead th {
+    color: #ffffff !important;
 } */
 
-.o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab:hover, .o_base_settings_view .o_form_renderer .o_setting_container .settings_tab .tab.selected {
-    color: var(--o-primary) !important;
+/* Form View */
+.o_form_view .o_form_statusbar > .o_statusbar_status > .o_arrow_button.btn-primary {
+    background-color: var(--primary) !important;
+}
+
+/* Search Panel */
+.o_search_panel .o_search_panel_category .o_search_panel_section_icon {
+    color: var(--primary) !important;
+}
+
+/* Chatter */
+.o_ChatterTopbar_button.o-active {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+/* Progress Bars */
+.progress-bar {
+    background-color: var(--primary) !important;
+}
+
+/* Selected Items */
+.o_selected_row {
+    background-color: var(--primary-light) !important;
+}
+
+/* Control Panel */
+.o_cp_buttons .btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Dropdown Menus */
+.dropdown-item.active, 
+.dropdown-item:active {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+/* Calendar View */
+.o_calendar_view .fc-event {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* Settings Menu */
+.o_base_settings .o_setting_container .settings_tab .tab.selected {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+/* Mobile View */
+@media (max-width: 767.98px) {
+    .o_main_navbar {
+        background-color: var(--primary) !important;
+    }
+}
+
+/* Header Menu Bar */
+.o_main_navbar,
+.o_menu_brand,
+.o_menu_sections,
+nav.o_main_navbar,
+.o_main_navbar > ul > li > a,
+.o_main_navbar > ul > li.o_extra_menu_items > a {
+    background-color: #2596be !important;
+    border-color: #2596be !important;
+    color: #ffffff !important;
+}
+
+/* Active/Selected Menu Item */
+.o_main_navbar > ul > li.show > a,
+.o_main_navbar > ul > li > a:hover,
+.o_main_navbar > ul > li.o_extra_menu_items.show > a {
+    background-color: #ffffff !important;
+}
+
+/* Sub-menu items */
+.o_main_navbar .dropdown-menu,
+.o_main_navbar .dropdown-menu > a {
+    background-color: #ffffff !important;
+    color: #1e1d1d !important;
+}
+
+/* Sub-menu hover state */
+.o_main_navbar .dropdown-menu > a:hover {
+    background-color: #2596be !important;
+}
+
+/* Specific menu items */
+.o_menu_sections,
+.o_menu_sections > a,
+.o_menu_sections .dropdown-toggle {
+    background-color: #2596be !important;
+    color: #ffffff !important;
+}
+
+/* Menu brand/logo area */
+.o_menu_brand {
+    background-color: #2596be !important;
+    color: #ffffff !important;
+}
+
+/* Switch view buttons - active state only */
+.o_cp_switch_buttons.btn-group .btn-secondary.active {
+    background-color: #2596be !important;
+    border-color: #2596be !important;
+    color: #ffffff !important;
+}
+
+/* Normal state */
+.o_cp_switch_buttons.btn-group .btn-secondary {
+    background-color: #ffffff !important;
+    border-color: #dee2e6 !important;
+    color: #212529 !important;
+}
+
+/* Hover state */
+.o_cp_switch_buttons.btn-group .btn-secondary:hover:not(.active) {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Top navigation bar - more specific selector */
+header > nav.o_main_navbar {
+    background-color: #2596be !important;
+}
+
+/* Additional specificity for menu items */
+.o_main_navbar .o_menu_sections > div,
+.o_main_navbar .o_menu_sections > a {
+    background-color: #2596be !important;
+}
+
+/* Checkbox styling */
+.o-checkbox.form-check .form-check-input:checked {
+    background-color: #000000 !important;
+    border-color: #000000 !important;
+}
+
+.o-checkbox.form-check .form-check-input:checked::after {
+    color: #ffffff !important;
+}
+
+/* Background when checked */
+.form-check-input:checked {
+    background-color: #000000 !important;
+    border-color: #000000 !important;
+}
+
+/* Header dan Navigation */
+.pos .pos-topheader {
+    background-color: #2596be !important;
+}
+
+/* Buttons */
+.pos .button {
+    background: #2596be !important;
+    color: white !important;
+}
+
+.pos .button:hover {
+    background: #1d7596 !important;
+}
+
+/* Payment Screen Buttons */
+.pos .payment-screen .button {
+    background: #2596be !important;
+}
+
+.pos .payment-screen .button:hover {
+    background: #1d7596 !important;
+}
+
+/* Numpad */
+.pos .numpad button {
+    background: #2596be !important;
+    color: white !important;
+}
+
+.pos .numpad button:hover {
+    background: #1d7596 !important;
+}
+
+/* Action Buttons */
+.pos .control-button {
+    background: #2596be !important;
+    color: white !important;
+}
+
+.pos .control-button:hover {
+    background: #1d7596 !important;
+}
+
+/* Selected Items */
+.pos .product.selected {
+    border-color: #2596be !important;
+}
+
+/* Category Buttons */
+.pos .category-button {
+    background: #2596be !important;
+    color: white !important;
+}
+
+.pos .category-button:hover {
+    background: #1d7596 !important;
+}
+
+/* Payment Methods */
+.pos .paymentmethod {
+    background: #2596be !important;
+    color: white !important;
+}
+
+.pos .paymentmethod:hover {
+    background: #1d7596 !important;
+}
+
+/* Header Buttons */
+.pos .pos-rightheader > * {
+    background: #2596be !important;
+    color: white !important;
+}
+
+/* Action Bar */
+.pos .actionpad .button {
+    background: #2596be !important;
+}
+
+/* Payment Screen */
+.pos .payment-screen .payment-buttons .button {
+    background: #2596be !important;
+}
+
+/* Scrollbar */
+.pos *::-webkit-scrollbar-thumb {
+    background: #2596be !important;
+}
+
+/* Selected Category */
+.pos .category-button.selected {
+    background: #1d7596 !important;
+}
+
+/* Order Line Selected */
+.pos .order .orderline.selected {
+    background: rgba(37, 150, 190, 0.2) !important;
+}
+
+/* Modal Headers */
+.pos .modal-header {
+    background: #2596be !important;
 }

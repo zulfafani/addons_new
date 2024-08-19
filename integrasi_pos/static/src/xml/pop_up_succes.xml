@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <!-- Popup for ending shift session -->
+    <t t-name="integrasi_pos.CustomPopup" owl="1">
+        <div class="succes-error-popup">
+            <!-- Header Section -->
+            <header>
+                <h2><t t-esc="props.title"/></h2>
+            </header>
+
+            <!-- Body Section with error message -->
+            <main class="popup-body">
+                <p><t t-esc="props.body"/></p>
+            </main>
+
+            <!-- Footer Section with buttons -->
+            <footer class="footer">
+                <button class="button confirm" t-on-click="confirm"><t t-esc="props.confirmText"/></button>
+                <!-- <button class="button cancel" t-on-click="cancel"><t t-esc="props.cancelText"/></button> -->
+            </footer>
+        </div>
+    </t>
+</templates>

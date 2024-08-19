@@ -1,14 +1,23 @@
 {
-    "odoo_db1a": {
-        "url": "https://johann1091-test03-03-stage-14543512.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test03-03-stage-14543512",
-        "username": "admin",
-        "password": "678aa473234c6d7ba5847b5c7a45846c79bf5390"
-    },
     "odoo_db1_mc": {
-        "url": "https://johann1091-test04-mc-14270841.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test04-mc-14270841",
+        "url": "http://pos-mc.visi-intech.com/jsonrpc",
+        "server_name": "MC",
+        "db": "sap-mc",
         "username": "admin",
-        "password": "c4c4be1fe70ffb4e8124739e3a771a8622be770e"
+        "password": "233dce6cd4ad3b27bda2af42843e97645bba6997"
+    },
+    "odoo_db1_a": {
+        "url": "http://pos-store.visi-intech.com/jsonrpc",
+        "server_name": "Store 01",
+        "db": "store-01-new",
+        "username": "admin",
+        "password": "51fff8397c1e49bfede7272982caa743f34db590"
+    },
+    "odoo_db2_a": {
+        "url": "http://pos-store.visi-intech.com/jsonrpc",
+        "server_name": "Store 02",
+        "db": "store-02",
+        "username": "admin",
+        "password": "658b2da4bdec6d2dc882a3ac5510476ac006598d"
     }
 }

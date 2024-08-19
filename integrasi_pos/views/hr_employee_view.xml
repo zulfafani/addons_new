@@ -1,0 +1,49 @@
+<odoo>
+  <data>
+
+    <!-- form view-->
+    <record model="ir.ui.view" id="view_hr_employee_form">
+      <field name="name">hr.employee.form</field>
+      <field name="model">hr.employee</field>
+      <field name="inherit_id" ref="hr.view_employee_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='coach_id']" position="after">
+            <field name="id_mc"/>
+            <field name="is_integrated"/>
+        </xpath>
+        <xpath expr="//page[@name='hr_settings']" position="after" >
+            <page string="Access Right" name="access_right" groups="base.group_erp_manager">
+                <group>
+                    <group>
+                        <!-- <field name="disable_payment"/> -->
+                        <field name="is_cashier"/>
+                        <field name="is_pic"/>
+                        <!-- <field name="is_sales_person"/> -->
+                        <!-- <field name="pin_code"/> -->
+                    </group>
+                </group>
+            </page>
+        </xpath>
+        <!-- <xpath expr="//page[@name='hr_settings']" position="after">
+            <page string="Access Right" name="access_right" groups="base.group_erp_manager">
+                <group>
+                    <group>
+                        <field name="disable_payment"/>
+                    </group>
+                </group>
+            </page>
+        </xpath> -->
+        <!-- <xpath expr="//page[@name='access_right']" position="after">
+            <page string="PIN Codes" name="pin_codes" groups="base.group_erp_manager">
+                <group>
+                    <group>
+                        <field name="pin_code"/>
+                    </group>
+                </group>
+            </page>
+        </xpath> -->
+      </field>
+    </record>
+
+  </data>
+</odoo>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="integrasi_pos.SalesPersonButton" owl="1">
+        <button class="control-button" t-on-click="onClick">
+            <i class="fa fa-pencil-square"></i>
+            <span></span>
+            <span>Salesperson</span>
+        </button>
+    </t>
+
+    <t t-name="integrasi_pos.SalesPersonButtonPopup" owl="1">
+        <div class="sales-person-popup">
+            <header>
+                <h2><t t-esc="props.title"/></h2>
+            </header>
+
+            <div class="popup-content">
+                <select class="input-field" t-ref="salespersonField">
+                    <option value="">Select a Salesperson</option>
+                    <t t-foreach="state.salespersons" t-as="person" t-key="person.id">
+                        <option t-att-value="person.id">
+                            <t t-esc="person.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+
+            <footer class="footer">
+                <button class="button confirm" t-on-click="confirm">
+                    <t t-esc="props.confirmText"/>
+                </button>
+                <button class="button cancel" t-on-click="cancel">
+                    <t t-esc="props.cancelText"/>
+                </button>
+            </footer>
+        </div>
+    </t>
+</templates>

@@ -8,3 +8,4 @@ class StockMoveLine(models.Model):
     _inherit = 'stock.move.line'
 
     is_integrated = fields.Boolean(string='Is Integrated', readonly=True, tracking=True)
+    project = fields.Char(string='Project', readonly=True, tracking=True)

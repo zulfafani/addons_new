@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <!-- Hold Transaction Button Template -->
+    <t t-name="integrasi_pos.HoldTransactionButton" owl="1">
+        <button 
+            class="control-button btn btn-warning rounded-0 fw-bold d-flex align-items-center"
+            t-on-click="onClickHoldOrder"
+            title="Simpan Transaksi Saat Ini">
+            <i class="fa fa-pause-circle me-2" aria-hidden="true"/>
+            Hold Transaction
+        </button>
+    </t>
+
+    <!-- Recall Transaction Button Template -->
+    <t t-name="integrasi_pos.RecallTransactionButton" owl="1">
+        <button 
+            class="control-button btn btn-success rounded-0 fw-bold d-flex align-items-center"
+            t-on-click="onClickRecallOrder"
+            title="Pulihkan Transaksi yang Ditahan">
+            <i class="fa fa-history me-2" aria-hidden="true"/>
+            Recall Transaction
+        </button>
+    </t>
+</templates>

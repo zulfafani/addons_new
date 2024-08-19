@@ -1,0 +1,26 @@
+<templates xml:space="preserve">
+    <t t-name="ProductChoicePopup">
+        <div class="modal-body">
+            <h3 class="mb-3"><t t-esc="props.title"/></h3>
+            <ul class="list-group mb-3">
+                <t t-foreach="props.products" t-as="product">
+                    <li class="list-group-item">
+                        <label>
+                            <input type="radio"
+                                   t-att-value="product.id"
+                                   t-att-checked="state.selectedId === product.id"
+                                   t-on-click="() => state.selectedId = product.id"/>
+                            <t t-esc="product.display_name"/>
+                        </label>
+                    </li>
+                </t>
+            </ul>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" t-on-click="cancel">Batal</button>
+            <button class="btn btn-primary" t-att-disabled="!state.selectedId" t-on-click="confirm">
+                Pilih
+            </button>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- First define views -->
+    <record id="view_form_printer_list" model="ir.ui.view">
+        <field name="name">printer.list.form</field>
+        <field name="model">printer.list</field>
+        <field name="arch" type="xml">
+            <form string="Printer List">
+                <header>
+                    <button name="action_load_system_printers" string="Load System Printers" 
+                            type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="system_name"/>
+                        <field name="is_active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tree_printer_list" model="ir.ui.view">
+        <field name="name">printer.list.tree</field>
+        <field name="model">printer.list</field>
+        <field name="arch" type="xml">
+            <tree string="Printer List">
+                <field name="name"/>
+                <field name="system_name"/>
+                <field name="is_active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Then define actions -->
+    <record id="action_printer_list" model="ir.actions.act_window">
+        <field name="name">Printer List</field>
+        <field name="res_model">printer.list</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new printer here!
+            </p>
+        </field>
+    </record>
+
+    <!-- Then define menus using those actions -->
+    <menuitem id="menu_printer_list"
+              name="Printer List"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_printer_list"
+              sequence="4"/>
+
+    <!-- Now do the same for paper size: views, action, menu -->
+    <record id="view_form_paper_size" model="ir.ui.view">
+        <field name="name">paper.size.form</field>
+        <field name="model">paper.size</field>
+        <field name="arch" type="xml">
+            <form string="Paper Size">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="width"/>
+                        <field name="height"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tree_paper_size" model="ir.ui.view">
+        <field name="name">paper.size.tree</field>
+        <field name="model">paper.size</field>
+        <field name="arch" type="xml">
+            <tree string="Paper Size">
+                <field name="name"/>
+                <field name="width"/>
+                <field name="height"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_paper_size" model="ir.actions.act_window">
+        <field name="name">Paper Sizes</field>
+        <field name="res_model">paper.size</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create paper sizes for your barcode printing!
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_paper_size"
+              name="Paper Sizes"
+              parent="point_of_sale.menu_point_config_product"
+              action="action_paper_size"
+              sequence="5"/>
+</odoo>

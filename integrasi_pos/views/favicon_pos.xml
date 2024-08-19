@@ -1,0 +1,7 @@
+<odoo>
+  <template id="assets_backend" name="Custom Assets Backend" inherit_id="web.assets_backend" priority="100">
+    <xpath expr="." position="inside">
+      <link rel="shortcut icon" href="/integrasi_pos/static/src/img/favicon.ico" type="image/x-icon"/>
+    </xpath>
+  </template>
+</odoo>

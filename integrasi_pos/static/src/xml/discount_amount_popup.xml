@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="integrasi_pos.DiscountAmountPopUp" owl="1">
+        <div class="popup popup-number custom-numpad-popup">
+            <main class="body">
+                <div class="input-container">
+                    <input
+                        type="text"
+                        t-att-value="state.inputValue"
+                        t-on-input="handleTyping"
+                        t-ref="discountInput"
+                        placeholder="Enter Discount"
+                    />
+                </div>
+                <div class="numpad-grid">
+                    <button t-on-click="() => this.addNumber('1')">1</button>
+                    <button t-on-click="() => this.addNumber('2')">2</button>
+                    <button t-on-click="() => this.addNumber('3')">3</button>
+                    <button t-on-click="() => this.addNumber('4')">4</button>
+                    <button t-on-click="() => this.addNumber('5')">5</button>
+                    <button t-on-click="() => this.addNumber('6')">6</button>
+                    <button t-on-click="() => this.addNumber('7')">7</button>
+                    <button t-on-click="() => this.addNumber('8')">8</button>
+                    <button t-on-click="() => this.addNumber('9')">9</button>
+                    <button t-on-click="() => this.addNumber('.')">.</button>
+                    <button t-on-click="() => this.addNumber('0')">0</button>
+                    <button t-on-click="removeLastChar">⌫</button>
+                </div>
+                <div class="button-container">
+                    <button class="confirm" t-on-click="confirmInput">Ok</button>
+                    <button class="cancel" t-on-click="cancel">Discard</button>
+                </div>
+            </main>
+        </div>
+    </t>
+
+    <t t-name="DiscountAmountButton" owl="1">
+        <div class="control-button o_pricelist_button btn btn-light rounded-0 fw-bolder" t-on-click="onClick">
+            <i class="fa fa-tag me-1"></i>
+            <span t-esc="label"/>
+        </div>
+    </t>
+</templates>
