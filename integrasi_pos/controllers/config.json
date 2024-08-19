@@ -1,14 +1,23 @@
 {
-    "odoo_db1a": {
-        "url": "https://johann1091-test03-03-stage-14543512.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test03-03-stage-14543512",
-        "username": "admin",
-        "password": "678aa473234c6d7ba5847b5c7a45846c79bf5390"
-    },
     "odoo_db1_mc": {
-        "url": "https://johann1091-test04-mc-14270841.dev.odoo.com/jsonrpc",
-        "db": "johann1091-test04-mc-14270841",
+        "url": "https://visiintechsupport-demo-14664695.dev.odoo.com/jsonrpc",
+        "server_name": "MC",
+        "db": "visiintechsupport-demo-14664695",
         "username": "admin",
-        "password": "c4c4be1fe70ffb4e8124739e3a771a8622be770e"
+        "password": "470625ea7919bf4e60e887f1acd9aa4b9b7020e5"
+    },
+    "odoo_db1_a": {
+        "url": "https://abhiramatech-store-01-store-01-15700560.dev.odoo.com/jsonrpc",
+        "server_name": "Store 01",
+        "db": "abhiramatech-store-01-store-01-15700560",
+        "username": "admin",
+        "password": "201a06e7a1e6be4d1b0ad5f65e600c6b02a670ba"
+    },
+    "odoo_db2_a": {
+        "url": "https://abhiramatech-store-02-new-store-02-15700889.dev.odoo.com/jsonrpc",
+        "server_name": "Store 02",
+        "db": "abhiramatech-store-02-new-store-02-15700889",
+        "username": "admin",
+        "password": "46ababe4705c4487f24ccde0403124daa5e16e99"
     }
 }

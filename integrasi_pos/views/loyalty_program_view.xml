@@ -10,12 +10,17 @@
         <xpath expr="//field[@name='date_to']" position="after">
             <field name="is_integrated"/>
             <field name="vit_trxid"/>
+            <field name="id_mc"/>
         </xpath>
         <xpath expr="//field[@name='is_integrated']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>
         <xpath expr="//field[@name='vit_trxid']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>
         </xpath>

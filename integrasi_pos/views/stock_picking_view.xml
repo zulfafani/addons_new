@@ -9,6 +9,7 @@
       <field name="arch" type="xml">
         <xpath expr="//field[@name='origin']" position="after">
             <field name="is_integrated"/>
+            <field name="is_updated"/>
             <field name="vit_trxid"/>
             <field name="target_location"/>
             <field name="targets"/>

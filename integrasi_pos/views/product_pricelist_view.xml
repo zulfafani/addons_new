@@ -1,0 +1,23 @@
+<odoo>
+  <data>
+
+    <record model="ir.ui.view" id="view_product_pricelist_form_inherit">
+      <field name="name">product.pricelist.form.inherit</field>
+      <field name="model">product.pricelist</field>
+      <field name="inherit_id" ref="product.product_pricelist_view"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='currency_id']" position="after">
+            <field name="id_mc"/>
+        </xpath>
+        <xpath expr="//form/sheet/notebook/page[@name='pricelist_rules']/field[@name='item_ids']/tree/field[@name='name']" position="before">
+          <field name="id_mc"/>
+        </xpath>
+        <xpath expr="//field[@name='id_mc']" position="attributes">
+          <attribute name="force_save">1</attribute>
+          <attribute name="readonly">True</attribute>
+        </xpath>
+      </field>
+    </record>
+
+  </data>
+</odoo>

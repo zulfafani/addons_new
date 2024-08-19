@@ -9,6 +9,7 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
+    is_updated = fields.Boolean(string="Updated", default=False, readonly=True, tracking=True)
     vit_trxid = fields.Char(string="Transaction ID")
     target_location = fields.Many2one('master.warehouse', string="Target Location")
     targets = fields.Char(string="Target Location")
@@ -22,7 +23,6 @@ class StockPicking(models.Model):
         
         # Call the super method
         res = super(StockPicking, self).button_validate()
-        self.write({'origin': False})
         return res
     
     @api.model
@@ -32,12 +32,13 @@ class StockPicking(models.Model):
         if not operation_type_id:
             raise UserError('Operation Type TS Out tidak ditemukan.')
         
-        product_codes = ['LBR00001', 'LBR00002', 'LBR00003']
+        product_codes = ['LBR00001', 'LBR00002', 'LBR00003', 'LBR00088', 'LBR00099', 'LBR00008', 'LBR00007', 'LBR00006', 'LBR00009', 'LBR00004']
         products = self.env['product.product'].search([('default_code', 'in', product_codes)])
-        if len(products) != 3:
-            raise UserError('Tidak semua produk dengan default_code yang ditentukan ditemukan.')
+        # if len(products) != 10:
+        #     raise UserError('Tidak semua produk dengan default_code yang ditentukan ditemukan.')
 
-        for i in range(200):
+        stock_pickings = []
+        for i in range(500):
             # Mengatur move_lines untuk setiap `stock.picking`
             move_lines = []
             for j, product in enumerate(products):
@@ -48,17 +49,25 @@ class StockPicking(models.Model):
                     # 'product_uom_id': product.uom_id.id,
                     'product_uom_qty': quantity,
                     'quantity': quantity,
-                    'location_id': 8,
-                    'location_dest_id': 5,
+                    'location_id': 4,
+                    'location_dest_id': 8,
                 }))
 
             target_location = self.env['master.warehouse'].search([('warehouse_name', '=', "Store 02")], limit=1)
             
-            self.env['stock.picking'].create({
+            stock_picking = {
                 'picking_type_id': operation_type_id.id,
-                'location_id': 8,
-                'location_dest_id': 5,
+                'location_id': 4,
+                'location_dest_id': 8,
                 'target_location': target_location.id,
                 'move_ids_without_package': move_lines,
-            })
-        return True
+            }
+            stock_pickings.append(stock_picking)
+        
+        self.env['stock.picking'].create(stock_pickings)
+
+    def write_tsout(self):
+        ts_out = self.env['stock.picking'].search([('state', '=', 'assigned')])
+
+        for res in ts_out:
+            res.write({'is_integrated': False})

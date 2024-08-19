@@ -1,55 +1,108 @@
-.book-order-popup {
-    width: 300px;
+/* Styling untuk popup End Shift Session */
+.end-shift-session-popup {
+    width: 600px;  /* Adjusted to match the width from your screenshot */
     background-color: #fff;
-    border-radius: 5px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;  /* Slightly increased border radius */
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);  /* Softer shadow */
+    font-family: 'Odoo', sans-serif;
 }
 
-.book-order-popup header {
-    background-color: #f0f0f0;
-    padding: 10px;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
+/* Styling header dari popup */
+.end-shift-session-popup header {
+    background-color: #f0f0f0;  /* Changed to match the light gray background in the screenshot */
+    padding: 15px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom: 1px solid #ccc;  /* Added border for a clearer separation */
 }
 
-.book-order-popup header h2 {
+.end-shift-session-popup header h2 {
     margin: 0;
-    font-size: 16px;
-    color: #333;
+    font-size: 18px;
+    color: #333;  /* Dark gray font color */
 }
 
+/* Styling konten utama popup */
 .popup-content {
     padding: 20px;
+    background-color: #fafafa;
 }
 
+/* Styling untuk input field di popup */
 .input-field {
     width: calc(100% - 20px);
-    margin-bottom: 10px;
-    padding: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 3px;
+    border-radius: 5px;  /* Adjusted radius for a smoother look */
     font-size: 14px;
+    background-color: #fff;  /* White background for the fields */
 }
 
+/* Footer section */
 .footer {
     text-align: right;
-    padding: 10px;
+    padding: 15px;
+    background-color: #f1f1f1;  /* Light gray background for footer */
+    border-top: 1px solid #ccc;
 }
 
+/* Styling umum untuk button */
 .button {
-    padding: 8px 16px;
+    padding: 10px 20px;
     font-size: 14px;
     cursor: pointer;
+    border-radius: 5px;
+    border: none;
+    margin-left: 10px;
 }
 
+/* Button confirm dengan warna ungu */
 .confirm {
-    background-color: #4CAF50;
+    background-color: #7e3b76;  /* Purple color similar to the screenshot */
     color: white;
-    border: none;
+    transition: background-color 0.3s;
+    margin-right: 15px;  /* Tambahkan spasi antara tombol Save dan Discard */
+    margin-bottom: 15px;
 }
 
+.confirm:hover {
+    background-color: #6a3062;
+}
+
+/* Button cancel dengan warna abu-abu */
 .cancel {
-    background-color: #f44336;
+    background-color: #f5efef;  /* Light gray color similar to the Discard button */
+    color: black;
+    transition: background-color 0.3s;
+    margin-left: 15px;  /* Tambahkan spasi antara tombol Save dan Discard */
+    margin-bottom: 15px;
+}
+
+.cancel:hover {
+    background-color: #b3b3b3;
+}
+
+
+/* Styling untuk Presensi button */
+.presensi-button {
+    background-color: #007bff;  /* Bootstrap primary color */
     color: white;
     border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 14px;  /* Consistent font size with other buttons */
+}
+
+.presensi-button:hover {
+    background-color: #0056b3;  /* Darker blue on hover */
+}
+
+/* Responsive popup untuk layar lebih kecil */
+@media (max-width: 600px) {
+    .end-shift-session-popup {
+        width: 90%;
+    }
 }

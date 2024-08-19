@@ -14,4 +14,25 @@ from . import loyalty_rule
 from . import loyalty_reward
 from . import purchase_order
 from . import account_move
+from . import product_template
+from . import res_users
+from . import hr_employee
+from . import account_tax
+from . import pos_payment_method
+from . import ir_sequence
+from . import pos_category
+from . import product_category
+from . import product_pricelist
+from . import res_partner_title
+from . import stock_location
+from . import stock_picking_type
+from . import uom_category
+from . import uom_uom
+from . import res_currency
+from . import account_journal
+from . import tes_maxworkers
+from . import product_pricelist_item
+from . import loyalty_card
+from . import pos_cashier_log
+from . import end_shift
 # from . import master_type

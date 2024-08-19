@@ -11,7 +11,8 @@
                 <field name="warehouse_name"/>    
                 <field name="warehouse_code"/>   
                 <field name="warehouse_transit"/>   
-                <field name="warehouse_short"/>   
+                <field name="id_mc_location"/>   
+                <field name="id_mc_transit"/>   
             </tree>
         </field>
     </record>
