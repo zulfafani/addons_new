@@ -52,3 +52,4 @@ from . import product_tag
 from . import res_partner_category
 # from . import print_barcode
 # from . import master_type
+from . import loyalty_history

@@ -18,3 +18,4 @@ access_loyalty_program_schedule,access_loyalty.program.schedule,model_loyalty_pr
 access_loyalty_member,access_loyalty.member,model_loyalty_member,base.group_user,1,1,1,1
 access_mrp_unbuild_line,access_mrp.unbuild.line,model_mrp_unbuild_line,base.group_user,1,1,1,1
 access_barcode_scanner_wizard,access_barcode.scanner.wizard,model_barcode_scanner_wizard,base.group_user,1,1,1,1
+access_loyalty_history,access_loyalty.history,model_loyalty_history,base.group_user,1,1,1,1
