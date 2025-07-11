@@ -11,3 +11,4 @@ class LoyaltyHistory(models.Model):
     card_id = fields.Many2one(comodel_name='loyalty.card', required=True, ondelete='cascade')
     points_before = fields.Float()
     points_after = fields.Float()
+    is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
