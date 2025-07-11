@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Tree View untuk Stock Quant Inventory Editable -->
+    <record id="view_stock_quant_tree_inventory_editable_inherit" model="ir.ui.view">
+        <field name="name">stock.quant.tree.inventory.editable.inherit</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+        <field name="arch" type="xml">
+            <!-- Tambahkan field doc_num setelah product_id -->
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="doc_num" 
+                       string="Inventory Counting" 
+                       optional="show"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

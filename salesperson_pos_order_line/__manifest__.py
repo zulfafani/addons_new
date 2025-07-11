@@ -21,6 +21,7 @@
                 'salesperson_pos_order_line/static/src/js/pos_orderline.js',
                 'salesperson_pos_order_line/static/src/xml/pos_screen_templates.xml',
                 'salesperson_pos_order_line/static/src/xml/orderline_templates.xml',
+                'salesperson_pos_order_line/static/src/css/pos_screen.css',
             ],
     },
     'images': ['static/description/banner.jpg'],

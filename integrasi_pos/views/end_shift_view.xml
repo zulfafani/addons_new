@@ -47,6 +47,7 @@
                 <field name="session_id" readonly="state in ('finished')"/>    
                 <field name="start_date" readonly="state in ('finished')"/>    
                 <field name="end_date" readonly="state in ('finished')"/> 
+                <field name="modal" readonly="state in ('finished')"/> 
                 <field name="is_integrated" string="Integrated"/>                  
               </group>
             </group>
@@ -54,11 +55,11 @@
               <page string="Shift Lines">
                 <field name="line_ids" context="{'parent_state': state}">
                   <tree editable="bottom">
-                    <field name="payment_date" width="20%" readonly="state in ('finished')"/>
-                    <field name="payment_method_id" width="20%" readonly="state in ('finished')"/>
-                    <field name="amount" width="20%" readonly="state in ('finished')"/>
-                    <field name="expected_amount" width="20%" column_invisible="context.get('parent_state') != 'finished'" readonly="state in ('finished')"/>
-                    <field name="amount_difference" width="20%" column_invisible="context.get('parent_state') != 'finished'" readonly="state in ('finished')"/>
+                    <field name="payment_date" width="20%" readonly="1"/>
+                    <field name="payment_method_id" width="20%" readonly="1"/>
+                    <field name="amount" width="20%"/>
+                    <field name="expected_amount" width="20%" readonly="1"/>
+                    <field name="amount_difference" width="20%" readonly="1"/>
                     <field name="state" column_invisible="1"/>
                   </tree>
                 </field>

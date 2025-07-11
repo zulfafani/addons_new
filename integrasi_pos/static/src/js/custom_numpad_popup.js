@@ -14,6 +14,7 @@ export class CustomNumpadPopUp extends AbstractAwaitablePopup {
         this.pos = useService("pos");
         this.popup = useService("popup");
         this.notification = useService("notification");
+        this.rpc = useService("rpc");
         this.inputRef = useRef("pinInput");
 
         onMounted(() => {
@@ -23,6 +24,7 @@ export class CustomNumpadPopUp extends AbstractAwaitablePopup {
         this.state = useState({
             inputValue: "",
             displayValue: "",
+            note: "",
         });
 
         this.handleTyping = (ev) => {
@@ -32,6 +34,10 @@ export class CustomNumpadPopUp extends AbstractAwaitablePopup {
             if (this.state.inputValue.length >= 4) return;
             this.state.inputValue += lastChar;
             this.state.displayValue += "*";
+        };
+
+        this.handleNoteInput = (ev) => {
+            this.state.note = ev.target.value;
         };
     }
 
@@ -49,6 +55,7 @@ export class CustomNumpadPopUp extends AbstractAwaitablePopup {
     clearInput() {
         this.state.inputValue = "";
         this.state.displayValue = "";
+        this.state.note = "";
     }
 
     async confirmInput() {
@@ -72,6 +79,14 @@ export class CustomNumpadPopUp extends AbstractAwaitablePopup {
         }
 
         if (enteredPin === expectedPin) {
+            try {
+                await this.rpc("/pos/log_note/create", {
+                    note: this.state.note || "No reason provided",
+                });
+            } catch (error) {
+                console.error("Failed to create log note:", error);
+            }
+
             this.notification.add(_t("PIN Validated Successfully"), { type: "success" });
             this.confirm({ confirmed: true });
         } else {

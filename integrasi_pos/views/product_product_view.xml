@@ -4,6 +4,11 @@
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_normal_form_view"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="id_mc"/>
+                <field name="is_fixed_price"/>
+                <field name="brand"/>
+            </xpath>
             <xpath expr="//page[@name='invoicing']" position="after">
                 <page string="Barcodes">
                     <field name="multi_barcode_ids" readonly="1">

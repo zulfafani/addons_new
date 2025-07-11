@@ -1,0 +1,201 @@
+.popup-numeric-keyboard {
+    min-width: 400px;
+    max-width: 500px;
+}
+
+.popup-numeric-keyboard .popup-body {
+    padding: 30px;
+    text-align: center;
+}
+
+.popup-numeric-keyboard .popup-title {
+    margin-bottom: 25px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Input Display */
+.input-display {
+    margin-bottom: 25px;
+}
+
+.input-field {
+    background: #f8f9fa;
+    border: 3px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    font-size: 36px;
+    font-weight: bold;
+    letter-spacing: 8px;
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.input-field.error {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.input-field .placeholder {
+    color: #6c757d;
+    opacity: 0.7;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 16px;
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+/* Numeric Keyboard */
+.numeric-keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.key-btn {
+    width: 80px;
+    height: 80px;
+    border: none;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.key-btn.number {
+    background: #007cba;
+    color: white;
+}
+
+.key-btn.number:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+.key-btn.number:active {
+    transform: scale(0.95);
+    background: #004085;
+}
+
+.key-btn.action {
+    background: #6c757d;
+    color: white;
+    font-size: 16px;
+}
+
+.key-btn.action:hover {
+    background: #545b62;
+    transform: scale(1.05);
+}
+
+.key-btn.action:active {
+    transform: scale(0.95);
+    background: #495057;
+}
+
+.key-btn.clear {
+    background: #dc3545;
+}
+
+.key-btn.clear:hover {
+    background: #c82333;
+}
+
+.key-btn.zero {
+    width: 170px;
+}
+
+/* Action Buttons */
+.popup-actions {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.popup-actions .btn {
+    min-width: 120px;
+    height: 50px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #545b62;
+    transform: translateY(-2px);
+}
+
+.confirm-btn {
+    background: #28a745;
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.popup-actions .btn:active {
+    transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .popup-numeric-keyboard {
+        min-width: 90vw;
+        max-width: 95vw;
+    }
+    
+    .key-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 20px;
+    }
+    
+    .key-btn.zero {
+        width: 155px;
+    }
+    
+    .input-field {
+        font-size: 28px;
+        letter-spacing: 6px;
+        min-height: 70px;
+    }
+}
+
+/* Touch feedback */
+@media (hover: none) and (pointer: coarse) {
+    .key-btn:active {
+        background: #0056b3 !important;
+        transform: scale(0.9);
+    }
+}

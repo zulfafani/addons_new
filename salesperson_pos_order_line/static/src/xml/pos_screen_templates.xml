@@ -1,12 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--ADDING BUTTON IN POS-->
 <templates id="template" xml:space="preserve">
-    <t t-name="SalesPersonButton">
-        <button class="control-button btn btn-light rounded-0 fw-bolder" t-on-click="() => this.onClick()">
-           <i class="fa fa-pencil-square" role="img" aria-label="Products"
-               title="Products" />
-            <span> </span>
-            <span>Salesperson</span>
-        </button>
+    
+    <!-- Custom Salesperson Popup Template -->
+    <t t-name="CustomSalesPersonPopup">
+        <div class="custom-popup-overlay" t-on-click="cancel">
+            <div class="custom-popup-container" t-on-click.stop="">
+                <!-- Header -->
+                <div class="custom-popup-header">
+                    <h2 class="custom-popup-title">
+                        <i class="fa fa-user-circle"/>
+                        <t t-esc="props.title"/>
+                    </h2>
+                    <button class="custom-popup-close" t-on-click="cancel">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="custom-popup-search">
+                    <i class="fa fa-search search-icon"/>
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        placeholder="Search salesperson..."
+                        t-on-input="onSearchInput"
+                        t-att-value="state.searchQuery"
+                    />
+                </div>
+
+                <!-- List -->
+                <div class="custom-popup-list">
+                    <t t-if="filteredList.length === 0">
+                        <div class="empty-state">
+                            <i class="fa fa-inbox"/>
+                            <p>No salesperson found</p>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div 
+                            t-foreach="filteredList" 
+                            t-as="item" 
+                            t-key="item.id"
+                            class="list-item"
+                            t-att-class="{'selected': state.selectedId === item.id}"
+                            t-on-click="() => this.selectItem(item)"
+                        >
+                            <div class="item-avatar">
+                                <i class="fa fa-user"/>
+                            </div>
+                            <div class="item-content">
+                                <span class="item-label" t-esc="item.label"/>
+                            </div>
+                            <div class="item-check" t-if="state.selectedId === item.id">
+                                <i class="fa fa-check-circle"/>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Footer -->
+                <div class="custom-popup-footer">
+                    <button class="btn-cancel" t-on-click="cancel">
+                        <i class="fa fa-times"/>
+                        Cancel
+                    </button>
+                    <button 
+                        class="btn-confirm" 
+                        t-on-click="confirm"
+                        t-att-disabled="!state.selectedId"
+                    >
+                        <i class="fa fa-check"/>
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
     </t>
+
+    <!-- Button Template - Matching POS Style -->
+    <t t-name="SalesPersonButton">
+        <div class="control-button o_pricelist_button btn btn-light rounded-0 fw-bolder"
+             t-on-click="onClick">
+            <i class="fa fa-user-plus me-1" role="img" aria-label="Set Salesperson"/>
+            Set Salesperson
+        </div>
+    </t>
+
 </templates>

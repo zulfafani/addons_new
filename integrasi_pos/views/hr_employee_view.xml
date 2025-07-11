@@ -18,7 +18,8 @@
                         <!-- <field name="disable_payment"/> -->
                         <field name="is_cashier"/>
                         <field name="is_pic"/>
-                        <!-- <field name="is_sales_person"/> -->
+                        <field name="is_sales"/>
+                        <field name="vit_employee_code"/>
                         <!-- <field name="pin_code"/> -->
                     </group>
                 </group>

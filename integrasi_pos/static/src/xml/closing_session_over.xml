@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="point_of_sale.ClosePosPopup" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
+
+        <!-- Replace the entire payment methods table -->
+        <xpath expr="//div[@class='payment-methods-overview overflow-auto']" position="replace">
+            <div class="payment-methods-overview overflow-auto">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                    <table class="table table-sm text-start">
+                        <thead class="sticky-top bg-light">
+                            <tr class="text-dark">
+                                <th style="min-width: 150px;">Payment Method</th>
+                                <th style="min-width: 120px; width:20%">Counted</th>
+                            </tr>
+                        </thead>
+                        
+                        <!-- CASH Section -->
+                        <t t-if="pos.config.cash_control">
+                            <tbody>
+                                <tr>
+                                    <td class="text-truncate"
+                                        t-esc="props.default_cash_details.name"
+                                        t-att-title="props.default_cash_details.name"/>
+                                    <!-- Counted Column for Cash -->
+                                    <td class="d-flex align-items-center gap-1">
+                                        <div class="flex-grow-1" style="min-width: 80px;">
+                                            <Input tModel="[state.payments[props.default_cash_details.id], 'counted']"
+                                                callback.bind="(value) => this.setManualCashInput(value)"
+                                                isValid.bind="env.utils.isValidFloat"/>
+                                        </div>
+                                        <div class="button icon ClosePosPopup btn btn-secondary btn-sm flex-shrink-0"
+                                             t-on-click="openDetailsPopup">
+                                            <i class="fa fa-money" role="img" title="Open the money details popup"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            
+                            <!-- Cash Overview (Opening, Moves, Payments) -->
+                            <tbody class="cash-overview border-start small text-muted">
+                                <tr>
+                                    <td>Opening</td>
+                                    <td class="align-top text-nowrap"
+                                        t-esc="env.utils.formatCurrency(props.default_cash_details.opening)"/>
+                                </tr>
+                                <tr t-foreach="props.default_cash_details.moves" t-as="move" t-key="move_index">
+                                    <td>
+                                        <div class="d-flex flex-row align-items-center">
+                                            <div class="cash-sign me-1 flex-shrink-0"
+                                                 t-esc="move.amount &lt; 0 ? '-' : '+'"/>
+                                            <span class="text-truncate" t-esc="move.name" t-att-title="move.name"/>
+                                        </div>
+                                    </td>
+                                    <td class="align-top text-nowrap"
+                                        t-esc="env.utils.formatCurrency(Math.abs(move.amount))"/>
+                                </tr>
+                                <tr t-if="props.default_cash_details.payment_amount">
+                                    <td>
+                                        <div class="d-flex flex-row align-items-center">
+                                            <div class="cash-sign me-1 flex-shrink-0"
+                                                 t-esc="props.default_cash_details.payment_amount &lt; 0 ? '-' : '+'"/>
+                                            <span class="text-truncate">
+                                                Payments in <t t-esc="props.default_cash_details.name"/>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="align-top text-nowrap"
+                                        t-esc="env.utils.formatCurrency(Math.abs(props.default_cash_details.payment_amount))"/>
+                                </tr>
+                            </tbody>
+                        </t>
+
+                        <!-- OTHER PAYMENT METHODS (Bank, etc) -->
+                        <tbody t-if="props.other_payment_methods.length > 0">
+                            <tr t-foreach="props.other_payment_methods" t-as="pm" t-key="pm.id">
+                                <td class="text-truncate" t-esc="pm.name" t-att-title="pm.name"/>
+                                <!-- Counted Column for Bank -->
+                                <t t-set="_showDiff" t-value="pm.type === 'bank' and pm.number !== 0" />
+                                <td t-if="_showDiff">
+                                    <Input tModel="[state.payments[pm.id], 'counted']"
+                                        isValid.bind="env.utils.isValidFloat" />
+                                </td>
+                                <td t-else=""></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </xpath>
+
+        <!-- Footer responsiveness tetap -->
+        <xpath expr="//footer[@class='footer modal-footer justify-content-between']" position="attributes">
+            <attribute name="class">footer modal-footer justify-content-between flex-wrap gap-2</attribute>
+        </xpath>
+        <xpath expr="//div[@class='modal-footer-left d-flex gap-2']" position="attributes">
+            <attribute name="class">modal-footer-left d-flex gap-2 flex-wrap</attribute>
+        </xpath>
+        <xpath expr="//div[@class='modal-footer-right d-flex gap-2']" position="attributes">
+            <attribute name="class">modal-footer-right d-flex gap-2 flex-wrap</attribute>
+        </xpath>
+    </t>
+</templates>

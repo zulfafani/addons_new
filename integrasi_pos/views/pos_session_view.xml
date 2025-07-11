@@ -1,6 +1,20 @@
 <odoo>
   <data>
 
+    <!-- Inherit to enable edit mode on pos.session form -->
+    <record model="ir.ui.view" id="view_pos_session_form_enable_edit">
+      <field name="name">pos.session.form.enable.edit</field>
+      <field name="model">pos.session</field>
+      <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+      <field name="arch" type="xml">
+        <!-- Remove edit="0" restriction to allow editing -->
+        <form position="attributes">
+          <attribute name="edit">1</attribute>
+        </form>
+      </field>
+    </record>
+
+    <!-- Add custom fields to pos.session form -->
     <record model="ir.ui.view" id="view_pos_session_form">
       <field name="name">pos.session.form</field>
       <field name="model">pos.session</field>
@@ -10,6 +24,8 @@
             <field name="is_updated"/>
             <field name="name_session_pos"/>
             <field name="id_mc"/>
+            <field name="vit_edit_start_balance" invisible="state == 'opened'"/>
+            <field name="vit_edit_end_balance" invisible="state == 'opened'"/>
         </xpath>
         <xpath expr="//field[@name='is_updated']" position="attributes">
           <attribute name="force_save">1</attribute>
@@ -28,6 +44,56 @@
         </xpath>
       </field>
     </record>
+
+    <!-- Inherit existing view to add editable fields -->
+    <record model="ir.ui.view" id="view_pos_session_form_editable_balance">
+        <field name="name">pos.session.form.editable.balance</field>
+        <field name="model">pos.session</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Make cash_register_balance_start editable in closing_control state -->
+            <xpath expr="//field[@name='cash_register_balance_start']" position="attributes">
+                <attribute name="readonly">state not in ['closing_control', 'opened']</attribute>
+                <attribute name="force_save">1</attribute>
+                <attribute name="help">Opening balance - Auto-filled with total modal from shifts, but can be edited manually</attribute>
+            </xpath>
+
+            <!-- Make cash_register_balance_end_real editable in closing_control state -->
+            <xpath expr="//field[@name='cash_register_balance_end_real']" position="attributes">
+                <attribute name="readonly">state != 'closing_control'</attribute>
+                <attribute name="force_save">1</attribute>
+                <attribute name="invisible">0</attribute>
+                <attribute name="help">Ending balance - Can be edited manually during closing</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Optional: Add a button to manually recalculate balance_start -->
+    <!-- <record model="ir.ui.view" id="view_pos_session_form_recalc_button">
+        <field name="name">pos.session.form.recalc.button</field>
+        <field name="model">pos.session</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+        <field name="arch" type="xml">
+            
+            <xpath expr="//button[@name='show_cash_register']" position="after">
+                <button
+                    name="action_recalculate_balance_start"
+                    type="object"
+                    string="Recalculate Opening Balance"
+                    class="oe_stat_button"
+                    icon="fa-calculator"
+                    invisible="state not in ['closing_control', 'opened'] or not cash_control"
+                    help="Recalculate opening balance from total modal of all shifts">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Recalculate Balance</span>
+                    </div>
+                </button>
+            </xpath>
+
+        </field>
+    </record> -->
 
   </data>
 </odoo>

@@ -10,6 +10,39 @@ class ProductTemplateInherit(models.Model):
     vit_sub_div = fields.Char(string="Sub Category")
     vit_item_kel = fields.Char(string="Kelompok")
     vit_item_type = fields.Char(string="Type")
+    is_fixed_price = fields.Boolean(string="Fixed Price", default=False)
+    vit_is_discount = fields.Boolean(string="Is Discount", default=False)
+    brand = fields.Char(string="Brand")
+
+    @api.model
+    def create(self, vals):
+        record = super(ProductTemplateInherit, self).create(vals)
+        update_vals = {}
+        if 'is_fixed_price' in vals:
+            update_vals['is_fixed_price'] = vals['is_fixed_price']
+        if 'brand' in vals:
+            update_vals['brand'] = vals['brand']
+        if update_vals:
+            record.product_variant_ids.write(update_vals)
+        return record
+
+    def write(self, vals):
+        res = super(ProductTemplateInherit, self).write(vals)
+        update_vals = {}
+        if 'is_fixed_price' in vals:
+            update_vals['is_fixed_price'] = vals['is_fixed_price']
+        if 'brand' in vals:
+            update_vals['brand'] = vals['brand']
+        if update_vals:
+            for template in self:
+                template.product_variant_ids.write(update_vals)
+        return res
+
+
+
+    def _check_barcode_uniqueness(self):
+        # override to disable barcode uniqueness constraint
+        return True
 
     @api.model
     def parse_weight_barcode(self, code):
@@ -45,3 +78,13 @@ class ProductTemplateInherit(models.Model):
 
         except Exception as e:
             return {'error': str(e)}
+
+class ProductProductInherit(models.Model):
+    _inherit = 'product.product'
+
+    vit_is_discount = fields.Boolean(string="Is Discount", default=False)
+
+    def _check_barcode_uniqueness(self):
+        # Override untuk mematikan validasi barcode unik
+        # Tidak akan pernah raise ValidationError lagi walaupun ada duplikat
+        return True

@@ -2,8 +2,11 @@
 <templates id="template" xml:space="preserve">
   <!-- Inherit template and remove price section beside product name -->
   <t t-inherit="point_of_sale.Orderline" t-inherit-mode="extension" owl="1">
+    
+    <!-- Remove price section beside product name -->
     <xpath expr="//div[@class='product-price d-inline-block text-end price fw-bolder']" position="replace">
       <!-- Harga di samping nama produk dihapus -->
     </xpath>
+    
   </t>
 </templates>

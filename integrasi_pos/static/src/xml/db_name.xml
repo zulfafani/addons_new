@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="integrasi_pos.DbNameNavbar" owl="1">
+        <div class="o_navbar_db_name d-flex align-items-center justify-content-center px-3" 
+             title="Database Identifier"
+             style="height: 100%;">
+            <span t-esc="state.dbName" 
+                  style="font-weight: bold; color: #fff; line-height: 1;" />
+        </div>
+    </t>
+</templates>

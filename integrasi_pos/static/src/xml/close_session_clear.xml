@@ -2,17 +2,19 @@
 <templates xml:space="preserve">
     <t t-name="point_of_sale.ClosePosPopup" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
 
-        <!-- Remove Expected and Difference headers -->
-        <xpath expr="//th[.='Expected']" position="replace"/>
-        <xpath expr="//th[.='Difference']" position="replace"/>
+        <!-- Tambahkan kolom Expected kembali -->
+        <xpath expr="//tr[@class='text-dark']" position="before">
+            <th>Expected</th>
+        </xpath>
 
-        <!-- Remove Cash method Expected & Difference values -->
-        <xpath expr="//td[@t-esc='env.utils.formatCurrency(props.default_cash_details.amount)']" position="replace"/>
-        <xpath expr="//td[@t-esc='env.utils.formatCurrency(getDifference(props.default_cash_details.id))']" position="replace"/>
+        <!-- Cash row -->
+        <xpath expr="//tr[td[@t-esc='props.default_cash_details.name']]" position="before">
+            <td t-esc="env.utils.formatCurrency(state.payments[props.default_cash_details.id]?.expected || 0.0)"/>
+        </xpath>
 
-        <!-- Remove Bank method Expected & Difference values -->
-        <xpath expr="//td[@t-esc='env.utils.formatCurrency(pm.amount)']" position="replace"/>
-        <xpath expr="//td[@t-esc='env.utils.formatCurrency(getDifference(pm.id))']" position="replace"/>
-
+        <!-- Bank rows -->
+        <xpath expr="//tr[@t-foreach='props.other_payment_methods']" position="before">
+            <td t-esc="env.utils.formatCurrency(state.payments[pm.id]?.expected || 0.0)"/>
+        </xpath>
     </t>
 </templates>

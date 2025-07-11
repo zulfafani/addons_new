@@ -31,3 +31,5 @@ class ProductProduct(models.Model):
     _inherit = 'product.product'
 
     multi_barcode_ids = fields.One2many('multiple.barcode', 'product_id', string='Multiple Barcodes')
+    is_fixed_price = fields.Boolean(string="Fixed Price", default=False)
+    brand = fields.Char(string="Brand", tracking=True)

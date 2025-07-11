@@ -8,8 +8,8 @@
       <field name="inherit_id" ref="stock.view_warehouse"/>
       <field name="arch" type="xml">
         <xpath expr="//field[@name='code']" position="after">
-            <field name="show_prefix_code" invisible="1"/>
-            <field name="prefix_code" invisible="not show_prefix_code"/>
+            <field name="show_prefix_code"/>
+            <field name="prefix_code"/>
         </xpath>
       </field>
     </record>

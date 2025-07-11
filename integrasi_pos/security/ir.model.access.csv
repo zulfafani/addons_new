@@ -14,7 +14,9 @@ access_balance_stock,access_balance.stock,model_balance_stock,base.group_user,1,
 access_barcode_config,access_barcode.config,model_barcode_config,base.group_user,1,1,1,1
 access_inventory_barcode_wizard,access_inventory.barcode.wizard,model_inventory_barcode_wizard,base.group_user,1,1,1,1
 access_multiple_barcode,access_multiple.barcode,model_multiple_barcode,base.group_user,1,1,1,1
-access_loyalty_program_schedule,access_loyalty.program.schedule,model_loyalty_program_schedule,base.group_user,1,1,1,1
-access_loyalty_member,access_loyalty.member,model_loyalty_member,base.group_user,1,1,1,1
 access_mrp_unbuild_line,access_mrp.unbuild.line,model_mrp_unbuild_line,base.group_user,1,1,1,1
 access_barcode_scanner_wizard,access_barcode.scanner.wizard,model_barcode_scanner_wizard,base.group_user,1,1,1,1
+access_loyalty_history,access_loyalty.history,model_loyalty_history,base.group_user,1,1,1,1
+access_loyalty_member,access_loyalty.member,model_loyalty_member,base.group_user,1,1,1,1
+access_loyalty_program_schedule,access_loyalty.program.schedule,model_loyalty_program_schedule,base.group_user,1,1,1,1
+access_wizard_generate_stock_ledger,access_wizard.generate.stock.ledger,model_wizard_generate_stock_ledger,base.group_user,1,1,1,1

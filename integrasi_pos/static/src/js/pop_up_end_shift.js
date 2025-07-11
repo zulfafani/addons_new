@@ -258,7 +258,6 @@ export class EndShiftSessionButtonPopup extends AbstractAwaitablePopup {
                     } else {
                         paymentData[methodId] = {
                             payment_method_id: methodId,
-                            expected_amount: amount,
                             payment_date: paymentDate,
                         };
                     }

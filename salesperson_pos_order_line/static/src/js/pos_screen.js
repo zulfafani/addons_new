@@ -1,12 +1,58 @@
 /** @odoo-module **/
 
-import { Component } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { ProductScreen } from "@point_of_sale/app/screens/product_screen/product_screen";
-import { SelectionPopup } from "@point_of_sale/app/utils/input_popups/selection_popup";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { _t } from "@web/core/l10n/translation";
 
+export class CustomSalesPersonPopup extends Component {
+    static template = "CustomSalesPersonPopup";
+    static props = {
+        title: String,
+        list: Array,
+        close: Function,
+    };
+
+    setup() {
+        // ✅ PERBAIKAN: Gunakan useState untuk reactivity
+        this.state = useState({
+            searchQuery: "",
+            selectedId: null,
+        });
+    }
+
+    get filteredList() {
+        if (!this.state.searchQuery) {
+            return this.props.list;
+        }
+        const query = this.state.searchQuery.toLowerCase();
+        return this.props.list.filter(item => 
+            item.label.toLowerCase().includes(query)
+        );
+    }
+
+    onSearchInput(ev) {
+        this.state.searchQuery = ev.target.value;
+    }
+
+    selectItem(item) {
+        // ✅ State akan otomatis trigger re-render
+        this.state.selectedId = item.id;
+    }
+
+    confirm() {
+        const selected = this.props.list.find(item => item.id === this.state.selectedId);
+        this.props.close({ confirmed: true, payload: selected?.item });
+    }
+
+    cancel() {
+        this.props.close({ confirmed: false, payload: null });
+    }
+}
+
 export class SetProductListButton extends Component {
+    static template = "SalesPersonButton";
+
     setup() {
         super.setup();
         this.pos = usePos();
@@ -27,7 +73,7 @@ export class SetProductListButton extends Component {
             isSelected: false,
         }));
 
-        const { confirmed, payload: salesperson } = await this.popup.add(SelectionPopup, {
+        const { confirmed, payload: salesperson } = await this.popup.add(CustomSalesPersonPopup, {
             title: _t("Select the Salesperson"),
             list: salespersonList,
         });
@@ -41,8 +87,6 @@ export class SetProductListButton extends Component {
         }
     }
 }
-
-SetProductListButton.template = "SalesPersonButton";
 
 ProductScreen.addControlButton({
     component: SetProductListButton,

@@ -24,7 +24,8 @@ export class InputNumberPopUpQty extends AbstractAwaitablePopup {
 
         this.handleTyping = (ev) => {
             const value = ev.target.value;
-            if (/^[0-9]*$/.test(value)) {
+            // Only allow digits and one decimal point
+            if (/^[0-9]*\.?[0-9]*$/.test(value)) {
                 this.state.inputValue = value;
             }
         };
@@ -53,8 +54,12 @@ export class InputNumberPopUpQty extends AbstractAwaitablePopup {
     }
 
     addNumber(num) {
-        if (num === "." || this.state.inputValue.includes(".")) return;
-        this.state.inputValue += num;
+        // Add number, but prevent adding another decimal point if one exists
+        if (num === "." && !this.state.inputValue.includes(".")) {
+            this.state.inputValue += num;
+        } else if (/[0-9]/.test(num)) {
+            this.state.inputValue += num;
+        }
     }
 
     removeLastChar() {

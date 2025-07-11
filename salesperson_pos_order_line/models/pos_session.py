@@ -6,9 +6,13 @@ class PosSession(models.Model):
     _inherit = 'pos.session'
 
     def load_pos_data(self):
-        """Load POS data and add `res_users` to the response dictionary.
+        """Load POS data and add `hr_employee` (sales only) to the response dictionary.
         return: A dictionary containing the POS data.
         """
         res = super().load_pos_data()
-        res['hr_employee'] = self.env['hr.employee'].search_read(fields=['name'])
+        # Filter hanya employee dengan is_sales = True
+        res['hr_employee'] = self.env['hr.employee'].search_read(
+            domain=[('is_sales', '=', True)],
+            fields=['name']
+        )
         return res

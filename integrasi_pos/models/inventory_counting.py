@@ -3,6 +3,46 @@ from pytz import timezone
 from datetime import datetime, timedelta
 from odoo.exceptions import ValidationError
 
+class InventoryAdjustment(models.Model):
+    _inherit = 'stock.quant'
+
+    doc_num = fields.Many2one('inventory.stock', string="Inventory Counting")
+
+    @api.onchange('doc_num')
+    def _onchange_doc_num(self):
+        """Auto-fill inventory_quantity ketika doc_num dipilih"""
+        if self.doc_num and self.product_id:
+            # Cari line yang match
+            inventory_counting_line = self.doc_num.inventory_counting_ids.filtered(
+                lambda line: line.product_id.id == self.product_id.id 
+                and line.location_id.id == self.location_id.id
+                and (line.lot_id.id == self.lot_id.id if self.lot_id else not line.lot_id)
+            )
+            
+            if inventory_counting_line:
+                line = inventory_counting_line[0]
+                self.inventory_quantity = line.difference_qty
+                self.inventory_quantity_set = True
+
+    def action_apply_inventory(self):
+        """Override untuk mengisi inventory_quantity dari doc_num"""
+        for quant in self:
+            if quant.doc_num:
+                inventory_stock = quant.doc_num
+                
+                inventory_counting_line = inventory_stock.inventory_counting_ids.filtered(
+                    lambda line: line.product_id.id == quant.product_id.id 
+                    and line.location_id.id == quant.location_id.id
+                    and (line.lot_id.id == quant.lot_id.id if quant.lot_id else not line.lot_id)
+                )
+                
+                if inventory_counting_line:
+                    line = inventory_counting_line[0]
+                    quant.inventory_quantity = line.difference_qty
+                    quant.inventory_quantity_set = True
+        
+        return super(InventoryAdjustment, self).action_apply_inventory()
+
 class InventoryStock(models.Model):
     _name = "inventory.stock"
     _description = "Inventory Stock"
@@ -22,12 +62,84 @@ class InventoryStock(models.Model):
         ('in_progress', 'In Progress'),
         ('counted', 'Counted'),
     ], string='Status', default='draft', required=True, readonly=True, copy=False, tracking=True)
-    inventory_counting_ids = fields.One2many('inventory.counting', 'inventory_counting_id', string='Inventory Countings')
+    inventory_counting_ids = fields.One2many('inventory.counting', 'inventory_counting_id', string='Inventory Countings', order='sequence desc, id desc')
 
     barcode_input = fields.Char(string="Scan Barcode", readonly=False)
     is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
 
-    # inventory_count = fields.Integer(string='Count', compute='_compute_stock_count')
+    def action_apply_to_stock_quant(self):
+        """
+        Method untuk mengaplikasikan inventory counting ke stock.quant
+        """
+        self.ensure_one()
+        
+        if self.state != 'counted':
+            raise ValidationError("Inventory harus dalam status 'Counted' sebelum diaplikasikan.")
+        
+        StockQuant = self.env['stock.quant']
+        applied_count = 0
+        
+        for line in self.inventory_counting_ids:
+            # Cari stock.quant yang sesuai
+            quant = StockQuant.search([
+                ('product_id', '=', line.product_id.id),
+                ('location_id', '=', line.location_id.id),
+                ('lot_id', '=', line.lot_id.id if line.lot_id else False),
+                ('package_id', '=', False),
+                ('owner_id', '=', False),
+            ], limit=1)
+            
+            if quant:
+                # Update quant yang sudah ada
+                quant.write({
+                    'doc_num': line.inventory_stock_id.id,
+                    'inventory_quantity': line.counted_qty,
+                    'inventory_quantity_set': True,
+                    'inventory_date': line.inventory_date or fields.Date.today(),
+                    'user_id': self.env.user.id,
+                })
+                applied_count += 1
+            else:
+                # Buat quant baru dalam inventory mode
+                StockQuant.with_context(inventory_mode=True).create({
+                    'product_id': line.product_id.id,
+                    'location_id': line.location_id.id,
+                    'lot_id': line.lot_id.id if line.lot_id else False,
+                    'doc_num': line.inventory_stock_id.id,
+                    'inventory_quantity': line.counted_qty,
+                    'inventory_quantity_set': True,
+                    'inventory_date': line.inventory_date or fields.Date.today(),
+                    'user_id': self.env.user.id,
+                })
+                applied_count += 1
+        
+        # Update status
+        self.is_integrated = True
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Berhasil',
+                'message': f'Inventory counting berhasil diaplikasikan ke {applied_count} stock quant(s).',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+
+    def _get_next_sequence(self):
+        """Get the next highest sequence number"""
+        if self.inventory_counting_ids:
+            max_seq = max(self.inventory_counting_ids.mapped('sequence') or [0])
+            return max_seq + 1
+        return 1
+    
+    def _reorder_lines(self):
+        """Reorder all lines to maintain newest-first order"""
+        lines = list(self.inventory_counting_ids)
+        lines.reverse()  # Balik urutan untuk yang terbaru di atas
+        for idx, line in enumerate(lines):
+            line.sequence = idx + 1
 
     @api.model
     def default_get(self, fields_list):
@@ -65,17 +177,89 @@ class InventoryStock(models.Model):
         
         return res
     
-    # models/inventory_stock.py
-    # models/inventory_stock.py
+    @api.model
+    def process_barcode_from_wizard(self, inventory_id, barcode, quantity=1.0):
+        """Process barcode with quantity input from wizard"""
+        inventory = self.browse(inventory_id)
+        if not inventory.exists():
+            return {'status': 'error', 'message': 'Inventory record not found'}
+
+        try:
+            # Get config
+            barcode_config = self.env['barcode.config'].search([], limit=1)
+            if not barcode_config:
+                return {'status': 'error', 'message': 'Barcode config belum disetting.'}
+
+            # Default: pakai barcode penuh
+            search_barcode = barcode
+
+            # Cari produk berdasarkan barcode penuh terlebih dahulu
+            product = self.env['product.product'].search([
+                ('barcode', '=', search_barcode)
+            ], limit=1)
+
+            # Jika tidak ditemukan produk dan ada konfigurasi panjang_barcode,
+            # cek apakah ini produk dengan to_weight=True
+            if not product and barcode_config.panjang_barcode:
+                # Potong barcode satu karakter lebih sedikit dari yang dikonfigurasi (panjang_barcode - 1)
+                search_barcode = barcode[:barcode_config.panjang_barcode - 1]
+                
+                # Cari produk dengan barcode yang sudah dipotong
+                product = self.env['product.product'].search([
+                    ('barcode', '=', search_barcode),
+                    ('to_weight', '=', True)  # Hanya untuk produk to_weight=True
+                ], limit=1)
+
+            if not product:
+                return {'status': 'error', 'message': f"❌ Produk dengan barcode '{search_barcode}' tidak ditemukan."}
+
+            # Cari line dengan produk ini
+            existing_line = inventory.inventory_counting_ids.filtered(
+                lambda l: l.product_id.id == product.id and l.location_id.id == inventory.location_id.id
+            )
+
+            if existing_line:
+                # Jika line sudah ada, akumulasi counted_qty dengan quantity yang diinput
+                # DAN update sequence agar muncul di atas
+                existing_line.counted_qty += quantity
+                existing_line.sequence = inventory._get_next_sequence()
+                total_qty = existing_line.counted_qty
+            else:
+                # Jika belum ada line, buat baris counting baru dengan sequence tertinggi
+                new_line = self.env['inventory.counting'].create({
+                    'inventory_counting_id': inventory.id,
+                    'inventory_stock_id': inventory.id,
+                    'product_id': product.id,
+                    'location_id': inventory.location_id.id,
+                    'inventory_date': inventory.inventory_date,
+                    'state': 'in_progress',
+                    'uom_id': product.uom_id.id,
+                    'counted_qty': quantity,
+                    'sequence': inventory._get_next_sequence(),
+                })
+                total_qty = quantity
+
+            return {
+                'status': 'success',
+                'message': f"✅ Barcode {barcode} berhasil.\nProduk: {product.name}\nQty ditambahkan: {quantity}\nTotal Counted: {total_qty}",
+                'product_name': product.name,
+                'added_qty': quantity,
+                'total_qty': total_qty
+            }
+
+        except ValidationError as ve:
+            return {'status': 'error', 'message': f"❌ {ve.name or str(ve)}"}
+        except Exception as e:
+            return {'status': 'error', 'message': f"❌ Terjadi error: {str(e)}"}
+
     def open_barcode_scanner(self):
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'barcode.scanner.wizard',
             'view_mode': 'form',
             'target': 'new',
-            'context': {'default_inventory_id': self.id},
+            'context': {'default_inventory_stock_id': self.id},
         }
-
 
     @api.onchange('barcode_input')
     def _onchange_barcode_input(self):
@@ -114,25 +298,59 @@ class InventoryStock(models.Model):
             raise ValidationError(f"Produk dengan barcode '{search_barcode}' tidak ditemukan.")
 
         # Cek apakah sudah ada line dengan produk yang sama
-        existing_line = None
-        for line in self.inventory_counting_ids:
-            if line.product_id.id == product.id and line.location_id.id == self.location_id.id:
-                existing_line = line
-                break
+        existing_line = self.inventory_counting_ids.filtered(
+            lambda l: l.product_id.id == product.id and l.location_id.id == self.location_id.id
+        )
+
+        # Dapatkan sequence tertinggi untuk line baru
+        next_seq = self._get_next_sequence()
 
         if existing_line:
-            # Jika line sudah ada, akumulasi counted_qty dengan increment 1
-            existing_line.counted_qty += 1.0
+            # Jika line sudah ada, perbarui qty dan sequence
+            # Gunakan command (1, id, values) untuk update
+            new_commands = []
+            
+            for line in self.inventory_counting_ids:
+                if line.id == existing_line.id or (not line.id and line == existing_line):
+                    # Update existing line dengan qty baru dan sequence tertinggi
+                    if line.id:
+                        new_commands.append((1, line.id, {
+                            'counted_qty': line.counted_qty + 1.0,
+                            'sequence': next_seq,
+                        }))
+                    else:
+                        # Untuk new record (belum disave)
+                        line.counted_qty += 1.0
+                        line.sequence = next_seq
+                        new_commands.append((4, line.id, 0))
+                else:
+                    # Keep other lines
+                    if line.id:
+                        new_commands.append((4, line.id, 0))
+                    else:
+                        new_commands.append((4, line.id, 0))
+            
+            if new_commands:
+                self.inventory_counting_ids = new_commands
         else:
-            # Jika belum ada line, buat baris counting baru
-            self.inventory_counting_ids += self.env['inventory.counting'].new({
+            # Jika belum ada line, buat baris baru di posisi paling atas
+            # Gunakan command (0, 0, values) untuk create
+            new_commands = [(0, 0, {
                 'product_id': product.id,
                 'location_id': self.location_id.id,
                 'inventory_date': self.inventory_date,
                 'state': 'in_progress',
                 'uom_id': product.uom_id.id,
-                'counted_qty': 1.0,  # Set initial counted_qty to 1
-            })
+                'counted_qty': 1.0,
+                'sequence': next_seq,
+            })]
+            
+            # Tambahkan semua existing lines dengan command (4, id)
+            for line in self.inventory_counting_ids:
+                if line.id:
+                    new_commands.append((4, line.id, 0))
+            
+            self.inventory_counting_ids = new_commands
 
         # Reset input
         self.barcode_input = ''
@@ -191,15 +409,6 @@ class InventoryStock(models.Model):
         else:
             self.location_id = False
 
-
-    # def action_validate(self):
-    #     for record in self:
-    #         for line in record.inventory_counting_ids:
-    #             line.write({'state': 'counted'})
-                
-    #         # Update the state of the inventory.stock record
-    #         record.state = 'counted'
-
     def action_in_progress(self):
         for record in self:
             record.state = 'in_progress'
@@ -216,26 +425,6 @@ class InventoryStock(models.Model):
             'context': {'default_focus': 1},  # Menambahkan default_focus ke konteks
         }
 
-    # @api.depends('product_id')
-    # def _compute_stock_count(self):
-    #     for record in self:
-    #         count = 0
-    #         for product in record.product_id:
-    #             product_variant = product.product_variant_id
-    #             if not product_variant:
-    #                 continue
-    #             count += 1
-    #         record.inventory_count = count
-
-    # @api.onchange('category_id')
-    # def _onchange_category_id(self):
-    #     """Filter products based on the selected category."""
-    #     if self.category_id:
-    #         products = self.env['product.template'].search([('categ_id', '=', self.category_id.id)])
-    #         self.product_id = [(6, 0, products.ids)]
-    #     else:
-    #         self.product_id = [(5, 0)] 
-
     def action_view_inventory_counting(self):
         """Open inventory.counting records related to the current inventory.stock record."""
         self.ensure_one()
@@ -251,9 +440,12 @@ class InventoryStock(models.Model):
         }
 
     def action_start_counting(self):
-        """Update qty_hand for each inventory.counting line based on the balance_stock table."""
+        """ Jalankan laporan stock akhir sebelum mulai counting """
+        # 🚀 Generate balance.stock dulu
+        self.env['balance.stock'].get_report_stock_akhir()
+
         for record in self:
-            record.state = 'counted' 
+            record.state = 'counted'
             for line in record.inventory_counting_ids:
                 line.state = 'counted'
                 line.is_edit = False
@@ -262,27 +454,27 @@ class InventoryStock(models.Model):
                 inventory_datetime = record.inventory_date
 
                 stock_akhir_real = 0.0
-
                 if product_variant_id:
-                    # Find the closest date_stock that is less than or equal to inventory_datetime
                     self.env.cr.execute("""
-                        SELECT date_stock, stock_akhir
+                        SELECT stock_akhir
                         FROM balance_stock
                         WHERE product_id = %s
                         AND date_stock <= %s
                         ORDER BY date_stock DESC
                         LIMIT 1
                     """, (product_variant_id, inventory_datetime))
-                    
                     result = self.env.cr.fetchone()
                     if result:
-                        stock_akhir_real = result[1]
+                        stock_akhir_real = result[0]
 
                 line.qty_hand = stock_akhir_real
+        return True
+
 
 class InventoryCounting(models.Model):
     _name = "inventory.counting"
     _description = "Inventory Counting"
+    _order = 'sequence desc, id desc'
 
     inventory_counting_id = fields.Many2one('inventory.stock', string="Inventory Counting")
     inventory_stock_id = fields.Many2one('inventory.stock', string="Inventory Stock", ondelete='cascade')
@@ -301,6 +493,7 @@ class InventoryCounting(models.Model):
         ('counted', 'Counted'),
     ], string='Status', default='draft', required=True, readonly=True, copy=False, tracking=True)
     is_edit = fields.Boolean(string="Edit")
+    sequence = fields.Integer(string="Sequence", default=0)
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
@@ -313,40 +506,11 @@ class InventoryCounting(models.Model):
                 self.location_id = self.inventory_counting_id.location_id
                 self.uom_id = self.product_id.uom_id.id
 
-    # @api.depends('product_id', 'location_id')
-    # def _compute_qty_hand(self):
-    #     """Compute qty_hand from stock.quant."""
-    #     for record in self:
-    #         if record.product_id and record.location_id:
-    #             stock_quant = self.env['stock.quant'].search([
-    #                 ('product_id', '=', record.product_id.id),
-    #                 ('location_id', '=', record.location_id.id)
-    #             ], limit=1)
-    #             record.qty_hand = stock_quant.inventory_quantity_auto_apply or 0.0
-    #         else:
-    #             record.qty_hand = 0.0
-
     @api.depends('qty_hand', 'counted_qty')
     def _compute_difference_qty(self):
         for record in self:
             record.difference_qty = record.counted_qty - record.qty_hand
 
-    # @api.onchange('product_id', 'location_id')
-    # def _onchange_product_id(self):
-    #     """Set default UOM and qty_hand based on stock.quant."""
-    #     if self.product_id:
-    #         self.uom_id = self.product_id.uom_id
-    #         if self.location_id:
-    #             stock_quant = self.env['stock.quant'].search([
-    #                 ('product_id', '=', self.product_id.id),
-    #                 ('location_id', '=', self.location_id.id)
-    #             ], limit=1)
-    #             self.qty_hand = stock_quant.inventory_quantity_auto_apply or 0.0
-    #         else:
-    #             self.qty_hand = 0.0
-    #     else:
-    #         self.uom_id = False
-    #         self.qty_hand = 0.0
 
 class BarcodeScannerWizard(models.TransientModel):
     _name = 'barcode.scanner.wizard'
@@ -354,6 +518,7 @@ class BarcodeScannerWizard(models.TransientModel):
 
     inventory_stock_id = fields.Many2one('inventory.stock', string="Inventory Record")
     barcode = fields.Char(string="Scanned Barcode")
+    quantity = fields.Float(string="Quantity", default=1.0)
     scanner_placeholder = fields.Char(string="Scanner Placeholder")  # dummy field
 
     def action_close(self):

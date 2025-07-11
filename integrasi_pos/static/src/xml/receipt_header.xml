@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="integrasi_pos.ReceiptHeader" t-inherit="point_of_sale.ReceiptHeader" t-inherit-mode="extension">
+        <xpath expr="//div[@t-if='props.data.cashier']" position="before">
+            <t t-if="props.data.company">
+                <div>
+                    <strong t-esc="props.data.company.name" /><br/>
+                    <t t-if="props.data.company.street"><t t-esc="props.data.company.street" /><br/></t>
+                    <t t-if="props.data.company.street2"><t t-esc="props.data.company.street2" /><br/></t>
+                    <t t-if="props.data.company.city">
+                        <t t-esc="props.data.company.city" />
+                        <t t-if="props.data.company.zip"> - <t t-esc="props.data.company.zip" /></t><br/>
+                    </t>
+                    <t t-if="props.data.company.country"><t t-esc="props.data.company.country" /><br/></t>
+                </div>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

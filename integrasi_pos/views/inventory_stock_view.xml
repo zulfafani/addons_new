@@ -11,7 +11,6 @@
                 <field name="doc_num"/>
                 <field name="location_id"/>
                 <field name="company_id"/>
-                <field name="total_qty"/>
                 <field name="state" widget="badge"/>
             </tree>
         </field>
@@ -21,12 +20,16 @@
         <field name="name">barcode.scanner.wizard.form</field>
         <field name="model">barcode.scanner.wizard</field>
         <field name="arch" type="xml">
-            <form string="Barcode Scanner">
-                <sheet>
-                    <group>
-                        <field name="scanner_placeholder" widget="barcode_scanner_widget" readonly="1" />
-                    </group>
-                </sheet>
+            <form string="📦 Barcode Scanner">
+            <sheet>
+                <group>
+                <field name="inventory_stock_id" invisible="1"/>
+                <field name="scanner_placeholder" widget="barcode_scanner_widget" readonly="1" />
+                </group>
+                <footer>
+                <button string="Close" type="object" name="action_close" class="btn-secondary"/>
+                </footer>
+            </sheet>
             </form>
         </field>
     </record>

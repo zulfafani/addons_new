@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-inherit="point_of_sale.ReprintReceiptScreen" t-inherit-mode="extension">
+        <xpath expr="//button[@t-on-click='tryReprint']" position="after">
+            <button class="button print btn btn-lg btn-warning mt-2" t-on-click="printViaLocalhost">
+                <i class="fa fa-desktop me-2"></i> Re-Print Struk
+            </button>
+        </xpath>
+    </t>
+
+</templates>

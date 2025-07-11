@@ -3,7 +3,7 @@ from . import res_partner
 from . import stock_picking
 from . import pos_session
 from . import pos_order
-# from . import pos_order_line
+from . import pos_order_line
 from . import master_warehouse
 from . import stock_move_line
 from . import manual_sync
@@ -50,5 +50,8 @@ from . import mrp_unbuild_line
 from . import stock_warehouse
 from . import product_tag
 from . import res_partner_category
+from . import loyalty_history
+from . import pos_payment
+
 # from . import print_barcode
 # from . import master_type

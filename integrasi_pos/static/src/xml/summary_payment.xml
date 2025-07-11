@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Inherit PaymentScreenMethods untuk menghapus Summary dari payment methods -->
+    <t t-inherit="point_of_sale.PaymentScreenMethods" t-inherit-mode="extension">
+        <xpath expr="//PaymentScreenPaymentLines" position="replace">
+            <!-- Menghapus PaymentScreenPaymentLines dari sini -->
+        </xpath>
+    </t>
+
+    <!-- Inherit PaymentScreenButtons untuk menambahkan Summary setelah buttons -->
+    <t t-inherit="point_of_sale.PaymentScreenButtons" t-inherit-mode="extension">
+        <xpath expr="//div[@class='payment-buttons d-flex flex-column flex-wrap']" position="after">
+            <!-- Menambahkan Summary setelah payment buttons -->
+            <PaymentScreenPaymentLines paymentLines="paymentLines" deleteLine.bind="deletePaymentLine" sendForceDone.bind="sendForceDone" sendPaymentReverse.bind="sendPaymentReverse" sendPaymentCancel.bind="sendPaymentCancel" sendPaymentRequest.bind="sendPaymentRequest" selectLine.bind="selectPaymentLine" updateSelectedPaymentline.bind="updateSelectedPaymentline" />
+        </xpath>
+    </t>
+
+</templates>

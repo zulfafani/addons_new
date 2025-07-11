@@ -1,0 +1,883 @@
+/* ===== POS 3 COLUMN LAYOUT ===== */
+/* Versi: 2.0.0 - Three Column Responsive Layout */
+
+/* ==================== BASE LAYOUT - 3 COLUMNS ==================== */
+
+.product-screen {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    gap: 0;
+}
+
+/* ==================== KOLOM 1: CONTROL PANEL (KIRI) ==================== */
+
+.product-screen .leftpane {
+    display: flex;
+    flex-direction: column;
+    width: 25%;
+    min-width: 280px;
+    max-width: 400px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-color: #ffffff;
+    border-right: 2px solid #dee2e6;
+}
+
+/* Control Section - Full Height */
+.product-screen .leftpane .pads,
+.product-screen .leftpane .control-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ==================== CONTROL BUTTONS - 2 COLUMNS GRID ==================== */
+
+.product-screen .control-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.product-screen .control-buttons > *,
+.product-screen .control-buttons > div,
+.product-screen .control-btn-item {
+    min-width: 0;
+    width: 100%;
+}
+
+.product-screen .control-buttons button {
+    width: 100% !important;
+    height: 3rem !important;
+    min-height: 3rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 0.5rem !important;
+    border-radius: 0.375rem !important;
+    border: 1px solid #dee2e6 !important;
+    background-color: #ffffff !important;
+    color: #495057 !important;
+    white-space: normal;
+    word-wrap: break-word;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    line-height: 1.2;
+}
+
+.product-screen .control-buttons button:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd !important;
+}
+
+.product-screen .control-buttons button:active {
+    transform: translateY(0);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Color Variants */
+.product-screen .control-buttons button.btn-primary {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+.product-screen .control-buttons button.btn-primary:hover {
+    background-color: #0056b3 !important;
+    border-color: #0056b3 !important;
+}
+
+.product-screen .control-buttons button.btn-warning {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.product-screen .control-buttons button.btn-warning:hover {
+    background-color: #e0a800 !important;
+}
+
+.product-screen .control-buttons button.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+.product-screen .control-buttons button.btn-danger:hover {
+    background-color: #c82333 !important;
+}
+
+.product-screen .control-buttons button.btn-success {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.product-screen .control-buttons button.btn-success:hover {
+    background-color: #218838 !important;
+}
+
+/* ==================== SUBPADS (NUMPAD + ACTION PAD) ==================== */
+
+.product-screen .subpads {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    margin-top: 0.5rem;
+}
+
+/* ==================== ACTION PAD ==================== */
+
+.product-screen .actionpad-widget,
+.product-screen .action-pad {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    min-width: 80px;
+    max-width: 90px;
+}
+
+.product-screen .action-pad button,
+.product-screen .actionpad-widget button {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 3rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    padding: 0.375rem !important;
+    border-radius: 0.375rem !important;
+    border: 1px solid #dee2e6 !important;
+    background-color: #ffffff !important;
+    color: #495057 !important;
+    white-space: normal;
+    word-wrap: break-word;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    line-height: 1.2;
+}
+
+.product-screen .action-pad button:hover,
+.product-screen .actionpad-widget button:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.product-screen .action-pad button.btn-primary,
+.product-screen .actionpad-widget button.btn-primary {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+.product-screen .action-pad button.btn-success,
+.product-screen .actionpad-widget button.btn-success {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+/* ==================== NUMPAD GRID ==================== */
+
+.product-screen .numpad-widget,
+.product-screen .numpad {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-rows: repeat(5, 1fr) !important;
+    gap: 0.5rem !important;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.product-screen .numpad button {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 3rem !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0.375rem !important;
+    border: 1px solid #dee2e6 !important;
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.product-screen .numpad button:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Numpad Mode Buttons */
+.product-screen .numpad button.mode,
+.product-screen .numpad button.input-button.mode {
+    background-color: #007bff !important;
+    border-color: #0056b3 !important;
+    color: #ffffff !important;
+}
+
+.product-screen .numpad button.mode:hover {
+    background-color: #0056b3 !important;
+}
+
+/* Numpad Special Buttons */
+.product-screen .numpad button.numpad-backspace,
+.product-screen .numpad button.input-button:not(.mode) {
+    background-color: #6c757d !important;
+    border-color: #5a6268 !important;
+    color: #ffffff !important;
+}
+
+/* ==================== KOLOM 2: PRODUCT LIST (TENGAH) ==================== */
+
+.product-screen .centerpane {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+}
+
+.product-screen .products-widget,
+.product-screen .products-widget-control {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Category Breadcrumb - Extra Compact */
+.product-screen .breadcrumbs,
+.product-screen .category-breadcrumb,
+.product-screen .products-widget .breadcrumb,
+.product-screen .category-simple-button {
+    flex-shrink: 0;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.25rem 0.375rem !important;
+    max-height: 2rem !important;
+    min-height: 2rem !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+}
+
+.product-screen .breadcrumbs button,
+.product-screen .category-breadcrumb button,
+.product-screen .breadcrumb button,
+.product-screen .category-simple-button {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.4rem !important;
+    height: 1.5rem !important;
+    min-height: 1.5rem !important;
+    max-height: 1.5rem !important;
+    margin: 0 0.125rem !important;
+    border-radius: 0.25rem !important;
+    line-height: 1.1 !important;
+}
+
+/* Search Box - Extra Compact */
+.product-screen .search-bar,
+.product-screen .searchbox,
+.product-screen .products-widget .search,
+.product-screen .products-widget-control .search {
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #ffffff;
+    padding: 0.375rem !important;
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: none;
+}
+
+.product-screen .search-bar input,
+.product-screen .searchbox input,
+.product-screen .products-widget .search input {
+    width: 100% !important;
+    height: 2rem !important;
+    font-size: 0.8rem !important;
+    padding: 0.3rem 0.6rem !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.3rem !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease;
+}
+
+.product-screen .search-bar input:focus,
+.product-screen .searchbox input:focus {
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15) !important;
+    outline: none !important;
+}
+
+/* Product List Container */
+.product-screen .products-widget .products,
+.product-screen .products-widget-control .products {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.75rem;
+}
+
+/* Product Grid */
+.product-screen .product-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.product-screen .product-card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+    border: 2px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.product-screen .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    border-color: #007bff;
+}
+
+/* ==================== KOLOM 3: ORDER LIST (KANAN) ==================== */
+
+.product-screen .rightpane {
+    display: flex;
+    flex-direction: column;
+    width: 30%;
+    min-width: 320px;
+    max-width: 450px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+/* Order Container - Scrollable */
+.product-screen .order-container,
+.product-screen .order-widget,
+.product-screen .orderlines-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ==================== ORDERLINE STYLING ==================== */
+
+.product-screen .orderline {
+    flex-shrink: 0;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    background-color: #ffffff;
+}
+
+.product-screen .orderline:hover {
+    background-color: #f8f9fa;
+}
+
+.product-screen .orderline.selected {
+    background-color: #e3f2fd;
+    border-left: 4px solid #1976d2;
+    padding-left: calc(0.75rem - 4px);
+    font-weight: 500;
+}
+
+.product-screen .orderline .product-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-screen .orderline .info-list {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
+.product-screen .orderline .info-list > * {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-screen .orderline .price {
+    font-weight: 700;
+    color: #212529;
+    white-space: nowrap;
+}
+
+.product-screen .orderline .product-code,
+.product-screen .orderline .product-qty,
+.product-screen .orderline .product-unit {
+    white-space: nowrap;
+}
+
+/* ==================== LOYALTY POINTS SECTION ==================== */
+
+.product-screen .loyalty-section {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding: 0.75rem;
+    background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+    border-top: 2px solid #dee2e6;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.product-screen .loyalty-points-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #212529;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.product-screen .loyalty-points-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.product-screen .loyalty-points-balance,
+.product-screen .loyalty-points-won,
+.product-screen .loyalty-points-spent,
+.product-screen .loyalty-points-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    border: 2px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.product-screen .loyalty-points-balance:hover,
+.product-screen .loyalty-points-won:hover,
+.product-screen .loyalty-points-spent:hover,
+.product-screen .loyalty-points-total:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.product-screen .loyalty-points-balance .text-muted,
+.product-screen .loyalty-points-won .text-muted,
+.product-screen .loyalty-points-spent .text-muted,
+.product-screen .loyalty-points-total .text-muted {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+}
+
+.product-screen .loyalty-points-balance .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #007bff;
+}
+
+.product-screen .loyalty-points-won .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #28a745;
+}
+
+.product-screen .loyalty-points-spent .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #dc3545;
+}
+
+.product-screen .loyalty-points-total .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #17a2b8;
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+
+.product-screen .order-container::-webkit-scrollbar,
+.product-screen .orderlines-container::-webkit-scrollbar,
+.product-screen .products::-webkit-scrollbar,
+.product-screen .pads::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.product-screen .order-container::-webkit-scrollbar-track,
+.product-screen .orderlines-container::-webkit-scrollbar-track,
+.product-screen .products::-webkit-scrollbar-track,
+.product-screen .pads::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.product-screen .order-container::-webkit-scrollbar-thumb,
+.product-screen .orderlines-container::-webkit-scrollbar-thumb,
+.product-screen .products::-webkit-scrollbar-thumb,
+.product-screen .pads::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 4px;
+}
+
+.product-screen .order-container::-webkit-scrollbar-thumb:hover,
+.product-screen .orderlines-container::-webkit-scrollbar-thumb:hover,
+.product-screen .products::-webkit-scrollbar-thumb:hover,
+.product-screen .pads::-webkit-scrollbar-thumb:hover {
+    background: #6c757d;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Tablet Large (1024px - 1199px) */
+@media (min-width: 1024px) and (max-width: 1199px) {
+    .product-screen .leftpane {
+        width: 28%;
+        min-width: 260px;
+    }
+    
+    .product-screen .rightpane {
+        width: 32%;
+        min-width: 300px;
+    }
+    
+    .product-screen .control-buttons button {
+        height: 2.75rem !important;
+        min-height: 2.75rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .product-screen .numpad button {
+        min-height: 2.75rem !important;
+        font-size: 0.95rem !important;
+    }
+    
+    .product-screen .product-list {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+}
+
+/* Tablet (768px - 1023px) - 2 KOLOM: Control + Products&Orders Merged */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .product-screen {
+        flex-direction: column;
+    }
+    
+    /* Kolom 1: Control Panel - Horizontal Layout di Top */
+    .product-screen .leftpane {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        height: auto;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .product-screen .leftpane .pads {
+        flex-direction: row;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        overflow-x: auto;
+    }
+    
+    .product-screen .control-buttons {
+        grid-template-columns: repeat(6, minmax(100px, 1fr));
+        gap: 0.375rem;
+        flex-shrink: 0;
+    }
+    
+    .product-screen .control-buttons button {
+        height: 2.5rem !important;
+        min-height: 2.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .product-screen .subpads {
+        flex-shrink: 0;
+        min-width: 280px;
+    }
+    
+    .product-screen .actionpad-widget {
+        min-width: 70px;
+        max-width: 70px;
+    }
+    
+    .product-screen .action-pad button,
+    .product-screen .actionpad-widget button {
+        min-height: 2.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .product-screen .numpad button {
+        min-height: 2.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Kolom 2 & 3 Merged: Products + Orders Side by Side */
+    .product-screen .tablet-merged-container {
+        display: flex;
+        flex-grow: 1;
+        overflow: hidden;
+        height: 55vh;
+    }
+    
+    .product-screen .centerpane {
+        width: 50%;
+        border-right: 2px solid #dee2e6;
+    }
+    
+    .product-screen .rightpane {
+        width: 50%;
+        min-width: 0;
+        max-width: none;
+    }
+    
+    .product-screen .product-list {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .product-screen .loyalty-points-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile (< 768px) - VERTICAL STACK dengan Tab Switching */
+@media (max-width: 767px) {
+    .product-screen {
+        flex-direction: column;
+    }
+    
+    /* Hide all panes by default */
+    .product-screen .leftpane,
+    .product-screen .centerpane,
+    .product-screen .rightpane {
+        display: none;
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        border: none;
+    }
+    
+    /* Show active pane */
+    .product-screen .leftpane.mobile-active,
+    .product-screen .centerpane.mobile-active,
+    .product-screen .rightpane.mobile-active {
+        display: flex;
+        flex-grow: 1;
+    }
+    
+    /* Control Panel Mobile */
+    .product-screen .leftpane .pads {
+        padding: 0.5rem;
+    }
+    
+    .product-screen .control-buttons {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.375rem;
+    }
+    
+    .product-screen .control-buttons button {
+        height: 2.5rem !important;
+        min-height: 2.5rem !important;
+        font-size: 0.7rem !important;
+        padding: 0.25rem !important;
+    }
+    
+    .product-screen .subpads {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .product-screen .actionpad-widget {
+        max-width: none;
+        flex-direction: row;
+        gap: 0.375rem;
+    }
+    
+    .product-screen .actionpad-widget button {
+        min-height: 2.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .product-screen .numpad {
+        gap: 0.375rem !important;
+    }
+    
+    .product-screen .numpad button {
+        min-height: 2.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Product List Mobile */
+    .product-screen .product-list {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    
+    /* Loyalty Points Mobile */
+    .product-screen .loyalty-points-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.375rem;
+    }
+    
+    .product-screen .loyalty-points-balance,
+    .product-screen .loyalty-points-won,
+    .product-screen .loyalty-points-spent,
+    .product-screen .loyalty-points-total {
+        min-height: 2.5rem;
+        padding: 0.375rem;
+    }
+    
+    .product-screen .loyalty-points-balance .value,
+    .product-screen .loyalty-points-won .value,
+    .product-screen .loyalty-points-spent .value,
+    .product-screen .loyalty-points-total .value {
+        font-size: 0.95rem;
+    }
+    
+    /* Mobile Navigation Tabs */
+    .product-screen .mobile-nav-tabs {
+        display: flex;
+        flex-shrink: 0;
+        height: 3.5rem;
+        background-color: #ffffff;
+        border-top: 2px solid #dee2e6;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .product-screen .mobile-nav-tabs button {
+        flex: 1;
+        border: none;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border-right: 1px solid #dee2e6;
+    }
+    
+    .product-screen .mobile-nav-tabs button:last-child {
+        border-right: none;
+    }
+    
+    .product-screen .mobile-nav-tabs button.active {
+        background-color: #007bff;
+        color: #ffffff;
+    }
+    
+    .product-screen .mobile-nav-tabs button:hover:not(.active) {
+        background-color: #e9ecef;
+    }
+    
+    .product-screen .mobile-nav-tabs button .icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+
+.product-screen button:focus,
+.product-screen .orderline:focus,
+.product-screen input:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .product-screen *,
+    .product-screen *::before,
+    .product-screen *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-contrast: high) {
+    .product-screen .orderline.selected {
+        border-left-width: 6px;
+    }
+    
+    .product-screen button {
+        border-width: 2px !important;
+    }
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+    .product-screen .leftpane,
+    .product-screen .centerpane,
+    .product-screen .mobile-nav-tabs {
+        display: none !important;
+    }
+    
+    .product-screen .rightpane {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* ==================== END OF STYLES ==================== */

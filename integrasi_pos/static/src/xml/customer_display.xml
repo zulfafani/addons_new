@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Override Footer Branding -->
+    <t t-name="point_of_sale.CustomerFacingDisplayOrder" t-inherit="point_of_sale.CustomerFacingDisplayOrder" t-inherit-mode="extension">
+        <xpath expr="//div[@class='pos-odoo_logo_container']" position="replace">
+            <div class="pos-posvit_logo_container">
+                <span>Powered by </span>
+                <span class="posvit-text">POSVIT</span>
+            </div>
+        </xpath>
+    </t>
+
+</templates>

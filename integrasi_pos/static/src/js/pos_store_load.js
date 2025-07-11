@@ -7,121 +7,206 @@ patch(PosStore.prototype, {
     async _processData(loadedData) {
         await super._processData(...arguments);
 
-        // Inject Configuration Settings
-        const configSettings = loadedData["res.config.settings"]?.[0];
-        if (configSettings) {
-            Object.assign(this.config, {
-                validate_discount_amount: configSettings.validate_discount_amount,
-                validate_closing_pos: configSettings.validate_closing_pos,
-                validate_order_line_deletion: configSettings.validate_order_line_deletion,
-                validate_discount: configSettings.validate_discount,
-                validate_price_change: configSettings.validate_price_change,
-                validate_order_deletion: configSettings.validate_order_deletion,
-                validate_add_remove_quantity: configSettings.validate_add_remove_quantity,
-                validate_payment: configSettings.validate_payment,
-                validate_end_shift: configSettings.validate_end_shift,
-                validate_refund: configSettings.validate_refund,
-                validate_close_session: configSettings.validate_close_session,
-                validate_void_sales: configSettings.validate_void_sales,
-                validate_member_schedule: configSettings.validate_member_schedule,
-                one_time_password: configSettings.one_time_password,
-                multiple_barcode_activate: configSettings.multiple_barcode_activate,
-                manager_validation: configSettings.manager_validation,
-                manager_pin: configSettings.manager_pin,
-                manager_name: configSettings.manager_name,
-            });
-            console.log("🔐 POS Config injected from res.config.settings:", configSettings);
-        }
-
-        // Barcode Config Injection
-        const barcodeConfig = loadedData["barcode.config"]?.[0];
-        if (barcodeConfig) {
-            Object.assign(this.config, {
-                digit_awal: parseInt(barcodeConfig.digit_awal || 2),
-                digit_akhir: parseInt(barcodeConfig.digit_akhir || 4),
-                prefix_timbangan: barcodeConfig.prefix_timbangan || "",
-                panjang_barcode: parseInt(barcodeConfig.panjang_barcode || 7),
-            });
-            console.log("📦 Barcode Config Loaded Offline:", barcodeConfig);
-        }
-
-        // Multiple Barcode Loader & Indexing
-        const multiBarcodes = loadedData["multiple.barcode"] || [];
-        this.db.multi_barcode_map = {};
-
-        for (const entry of multiBarcodes) {
-            const productId = Array.isArray(entry.product_id)
-                ? entry.product_id[0]
-                : entry.product_id;
-
-            if (!entry.barcode || !productId) continue;
-
-            if (!this.db.multi_barcode_map[entry.barcode]) {
-                this.db.multi_barcode_map[entry.barcode] = new Set();
+        try {
+            // 🔐 Config Settings
+            const configSettings = loadedData["res.config.settings"]?.[0];
+            if (configSettings) {
+                Object.assign(this.config, configSettings);
+                console.log("✅ POS Config injected:", configSettings);
             }
 
-            this.db.multi_barcode_map[entry.barcode].add(productId);
-        }
+            // 🏢 Company Info
+            const companies = loadedData["res.company"] || [];
+            if (companies.length) {
+                this.company = companies[0];
+                console.log("✅ Company loaded:", this.company);
+            }
 
-        // Enrich Product Model with multi_barcode_ids
-        const allProducts = Object.values(this.db.product_by_id || {});
-        for (const product of allProducts) {
-            product.multi_barcode_ids = [];
+            // 📦 Barcode Config
+            const barcodeConfig = loadedData["barcode.config"]?.[0];
+            if (barcodeConfig) {
+                Object.assign(this.config, {
+                    digit_awal: parseInt(barcodeConfig.digit_awal || 2),
+                    digit_akhir: parseInt(barcodeConfig.digit_akhir || 4),
+                    prefix_timbangan: barcodeConfig.prefix_timbangan || "",
+                    panjang_barcode: parseInt(barcodeConfig.panjang_barcode || 7),
+                });
+                console.log("✅ Barcode Config loaded:", barcodeConfig);
+            }
 
-            for (const [barcode, productSet] of Object.entries(this.db.multi_barcode_map)) {
-                if (productSet.has(product.id)) {
-                    product.multi_barcode_ids.push(barcode);
+            // 🧾 POS Order Lines
+            const posOrderLines = loadedData["pos.order.line"] || [];
+            this.pos_order_lines = posOrderLines;
+            this.order_line_numbers = {};
+
+            for (const line of posOrderLines) {
+                try {
+                    const orderId = Array.isArray(line.order_id) ? line.order_id[0] : line.order_id;
+                    if (orderId) {
+                        if (!this.order_line_numbers[orderId]) {
+                            this.order_line_numbers[orderId] = {};
+                        }
+                        this.order_line_numbers[orderId][line.id] = line.line_number || 1;
+                    }
+                } catch (e) {
+                    console.error("❌ Error processing order line:", line, e);
                 }
             }
-        }
 
-        // POS Session Data: cashier + shifts
-        this.cashier_logs = loadedData["pos.cashier.log"] || [];
-        this.end_shifts = loadedData["end.shift"] || [];
-        this.end_shift_lines = loadedData["end.shift.line"] || [];
+            console.log(`✅ Loaded ${posOrderLines.length} pos.order.line records`);
+            console.log("📊 order_line_numbers:", this.order_line_numbers);
 
-        console.log("📥 pos.cashier.log:", this.cashier_logs.length);
-        console.log("📥 end.shift:", this.end_shifts.length);
-        console.log("📥 end.shift.line:", this.end_shift_lines.length);
+            // 🕵️ Session Data
+            this.cashier_logs = loadedData["pos.cashier.log"] || [];
+            // this.end_shifts = loadedData["end.shift"] || [];
+            // this.end_shift_lines = loadedData["end.shift.line"] || [];
 
-        // Loyalty Data: schedule + member
-        this.loyalty_schedules = loadedData["loyalty.program.schedule"] || [];
-        this.loyalty_members = loadedData["loyalty.member"] || [];
+            console.log(`✅ Loaded ${this.cashier_logs.length} pos.cashier.log records`);
+            // console.log(`✅ Loaded ${this.end_shifts.length} end.shift records`);
+            // console.log(`✅ Loaded ${this.end_shift_lines.length} end.shift.line records`);
 
-        this.loyalty_members.forEach(member => {
-            const pos = member.member_pos;
-            const pos_id = Array.isArray(pos) ? pos[0] : pos;
-            const pos_name = Array.isArray(pos) ? pos[1] : '';
-        });
+            // 🗓️ Loyalty Schedules
+            this.loyalty_schedules = Array.isArray(loadedData["loyalty.program.schedule"])
+                ? loadedData["loyalty.program.schedule"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.loyalty_schedules.length} loyalty schedules`);
 
-        // Loyalty Program Activation by Valid Schedule
-        this.programs = loadedData["loyalty.program"] || [];
-        if (this.programs && Array.isArray(this.programs)) {
-            const validProgramIds = new Set(
-                (this.loyalty_schedules || []).map(s => {
-                    const pid = Array.isArray(s.program_id)
-                        ? s.program_id[0]
-                        : typeof s.program_id === "object"
-                            ? s.program_id?.id
-                            : s.program_id;
-                    return Number(pid);
-                })
-            );
-            this.programs.forEach(program => {
-                program.active = validProgramIds.has(Number(program.id));
-            });
-        }
+            // 👥 Loyalty Members
+            this.loyalty_members = Array.isArray(loadedData["loyalty.member"])
+                ? loadedData["loyalty.member"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.loyalty_members.length} loyalty members`);
 
-        // Patch partner.category_id
-        const rawPartners = loadedData["res.partner"] || [];
-        const partnerCategoryMap = Object.fromEntries(
-            rawPartners.map(p => [p.id, Array.isArray(p.category_id) ? p.category_id : []])
-        );
+            // 🏷️ Loyalty Programs
+            this.programs = Array.isArray(loadedData["loyalty.program"])
+                ? loadedData["loyalty.program"]
+                : [];
 
-        this.partners.forEach(p => {
-            if (partnerCategoryMap[p.id]) {
-                p.category_id = partnerCategoryMap[p.id];
+            // Set program active status based on schedules
+            const validProgramIds = new Set();
+            for (const schedule of this.loyalty_schedules) {
+                try {
+                    let pid;
+                    if (Array.isArray(schedule.program_id)) {
+                        pid = schedule.program_id[0];
+                    } else if (typeof schedule.program_id === "object" && schedule.program_id !== null) {
+                        pid = schedule.program_id.id;
+                    } else {
+                        pid = schedule.program_id;
+                    }
+                    
+                    if (pid) {
+                        validProgramIds.add(Number(pid));
+                    }
+                } catch (e) {
+                    console.error("❌ Error processing schedule:", schedule, e);
+                }
             }
-        });
-    }
+
+            for (const program of this.programs) {
+                program.active = validProgramIds.has(Number(program.id));
+            }
+
+            console.log(`✅ Loaded ${this.programs.length} loyalty programs`);
+
+            // 👤 HR Employee (Salesperson)
+            this.hr_employee = Array.isArray(loadedData["hr.employee"])
+                ? loadedData["hr.employee"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.hr_employee.length} HR employees`);
+
+            // 👤 Patch partner.category_id
+            const rawPartners = loadedData["res.partner"] || [];
+            const partnerCategoryMap = {};
+            
+            for (const p of rawPartners) {
+                try {
+                    partnerCategoryMap[p.id] = Array.isArray(p.category_id) ? p.category_id : [];
+                } catch (e) {
+                    console.error("❌ Error processing partner:", p, e);
+                }
+            }
+
+            // Apply category_id to partners
+            if (this.partners) {
+                for (const p of this.partners) {
+                    try {
+                        if (partnerCategoryMap[p.id]) {
+                            p.category_id = partnerCategoryMap[p.id];
+                        }
+                    } catch (e) {
+                        console.error("❌ Error patching partner:", p, e);
+                    }
+                }
+
+                console.log("✅ Patched Partner Categories");
+                const partnersWithCategories = this.partners.filter(
+                    p => Array.isArray(p.category_id) && p.category_id.length > 0
+                );
+                
+                console.log(`✅ ${partnersWithCategories.length} partners have categories`);
+            }
+
+            // 📦 Multiple Barcodes
+            this.multiple_barcodes = Array.isArray(loadedData["multiple.barcode"])
+                ? loadedData["multiple.barcode"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.multiple_barcodes.length} multiple barcodes`);
+
+            // 🎯 Loyalty Rules
+            this.loyalty_rules = Array.isArray(loadedData["loyalty.rule"])
+                ? loadedData["loyalty.rule"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.loyalty_rules.length} loyalty rules`);
+
+            // 🎁 Loyalty Rewards
+            this.loyalty_rewards = Array.isArray(loadedData["loyalty.reward"])
+                ? loadedData["loyalty.reward"]
+                : [];
+            
+            console.log(`✅ Loaded ${this.loyalty_rewards.length} loyalty rewards`);
+
+            console.log("✅ All POS data loaded successfully!");
+
+        } catch (error) {
+            console.error("❌ Error in _processData:", error);
+            // Don't throw - allow POS to continue loading
+        }
+    },
+
+    // getOrderLineNumber(orderId, lineId) {
+    //     try {
+    //         return this.order_line_numbers[orderId]?.[lineId] || 1;
+    //     } catch (e) {
+    //         console.error("❌ Error getting order line number:", e);
+    //         return 1;
+    //     }
+    // },
+
+    // setOrderLineNumber(orderId, lineId, lineNumber) {
+    //     try {
+    //         if (!this.order_line_numbers[orderId]) {
+    //             this.order_line_numbers[orderId] = {};
+    //         }
+    //         this.order_line_numbers[orderId][lineId] = lineNumber;
+    //     } catch (e) {
+    //         console.error("❌ Error setting order line number:", e);
+    //     }
+    // },
+
+    // getNextLineNumber(orderId) {
+    //     try {
+    //         const lines = this.order_line_numbers[orderId] || {};
+    //         const numbers = Object.values(lines);
+    //         return numbers.length ? Math.max(...numbers) + 1 : 1;
+    //     } catch (e) {
+    //         console.error("❌ Error getting next line number:", e);
+    //         return 1;
+    //     }
+    // }
 });

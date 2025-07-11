@@ -12,8 +12,10 @@ class HrEmployee(models.Model):
         help="Disable the payment button on the POS", readonly=True)
     pin_code = fields.Char(string="PIN Code Authorization", tracking=True)
     is_sales_person = fields.Boolean(string="Is Sales Person", tracking=True)
+    is_sales = fields.Boolean(string="Is Sales", tracking=True)
     is_cashier = fields.Boolean(string="Is Cashier", tracking=True)
     is_pic = fields.Boolean(string="Is PIC", tracking=True)
+    vit_employee_code = fields.Char(string="Employee Code", tracking=True)
     
     @api.model
     def create(self, vals):

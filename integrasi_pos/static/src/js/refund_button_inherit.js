@@ -13,15 +13,12 @@ patch(RefundButton.prototype, {
     },
 
     async click() {
-        // Get config settings to check if manager validation is required
         const configSettings = this.pos.config;
         const managerValidation = configSettings.manager_validation;
         const validateEndShift = configSettings.validate_refund;
-        
-        let confirmed = true; // Default to true if no validation needed
-        
+
+        let confirmed = true;
         if (managerValidation && validateEndShift) {
-            // Only show the popup if manager validation is required
             const result = await this.popup.add(CustomNumpadPopUp, {
                 title: "Enter Manager PIN",
                 body: "Please enter the manager's PIN to proceed with the refund.",
@@ -29,21 +26,22 @@ patch(RefundButton.prototype, {
             confirmed = result.confirmed;
         }
 
-        // If PIN is correct (or no validation required), continue to TicketScreen
         if (confirmed) {
             const order = this.pos.get_order();
-            
-            // Mark as refund order to prevent default customer override
+
+            // 🔑 Tandai alur refund di level POS agar order baru tidak diisi default partner
+            this.pos.in_refund_flow = true;
+
+            // Tandai order aktif sebagai refund (untuk berjaga-jaga)
             order.is_refund_order = true;
-            
+
             const partner = order.get_partner();
             const searchDetails = partner ? { fieldName: "PARTNER", searchTerm: partner.name } : {};
 
             this.pos.showScreen("TicketScreen", {
                 ui: { filter: "SYNCED", searchDetails },
                 destinationOrder: order,
-                // Add this flag to indicate we're creating a refund
-                isRefund: true
+                isRefund: true,
             });
         }
     },

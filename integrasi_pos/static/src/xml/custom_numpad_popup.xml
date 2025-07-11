@@ -12,6 +12,17 @@
                         placeholder="Enter PIN"
                     />
                 </div>
+
+                <div class="note-container" style="margin: 10px 0;">
+                    <textarea
+                        placeholder="Enter reason"
+                        t-att-value="state.note"
+                        t-on-input="handleNoteInput"
+                        rows="2"
+                        style="width: 100%; padding: 5px;"
+                    ></textarea>
+                </div>
+
                 <div class="numpad-grid">
                     <button t-on-click="() => this.addNumber('1')">1</button>
                     <button t-on-click="() => this.addNumber('2')">2</button>
@@ -26,6 +37,7 @@
                     <button t-on-click="() => this.addNumber('0')">0</button>
                     <button t-on-click="removeLastChar">⌫</button>
                 </div>
+
                 <div class="button-container">
                     <button class="confirm" t-on-click="confirmInput">Ok</button>
                     <button class="cancel" t-on-click="cancel">Discard</button>

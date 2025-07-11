@@ -12,6 +12,8 @@
             <field name="vit_sub_div"/>
             <field name="vit_item_kel"/>
             <field name="vit_item_type"/>
+            <field name="is_fixed_price"/>
+            <field name="brand"/>
         </xpath>
         <xpath expr="//page[@name='invoicing']" position="after">
             <page string="Barcodes">

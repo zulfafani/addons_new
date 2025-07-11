@@ -1,0 +1,28 @@
+/* Custom POSVIT Branding */
+.pos-posvit_logo_container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 10px;
+    font-size: 14px;
+}
+
+.pos-posvit_logo_container span {
+    color: #888;
+}
+
+.pos-posvit_logo_container .posvit-text {
+    font-weight: bold;
+    font-size: 18px;
+    color: #4CAF50; /* Warna hijau, sesuaikan dengan brand Anda */
+    letter-spacing: 1px;
+}
+
+/* Alternative: Gradient text style */
+.pos-posvit_logo_container .posvit-text.gradient {
+    background: linear-gradient(90deg, #4CAF50, #2196F3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}

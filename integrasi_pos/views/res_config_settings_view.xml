@@ -10,8 +10,6 @@
                         help="If enabled, certain operations in PoS will require manager approval.">
                         <field name="manager_validation"/>
                     </setting>
-
-                    <!-- Field Manager ID yang hanya muncul jika Manager Validation diaktifkan -->
                     <setting id="manager_id" string="Manager" 
                         help="Select the manager responsible for PoS validation."
                         invisible="manager_validation != True">
@@ -62,30 +60,34 @@
                         invisible="manager_validation != True">
                         <field name="validate_void_sales"/>
                     </setting>
-
-                    <!-- <setting id="one_time_password" string="One Time Password for an Order"
-                        help="Require a one-time password for processing specific PoS orders.">
-                        <field name="one_time_password"/>
-                    </setting> -->
-                </block>
-            </app>
-
-            <!-- Member/Schedule Promo -->
-            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
-                <block title="Member/Schedule Promo" id="pos_member_schedule">
-                    <setting id="member_schedule_activate" string="Member/Schedule"
-                        help="Activate Member/Schedule.">
-                        <field name="validate_member_schedule"/>
+                    <setting id="validate_cash_drawer" string="Open Drawer"
+                        help="Require manager approval for open drawer."
+                        invisible="manager_validation != True">
+                        <field name="validate_cash_drawer"/>
+                    </setting>
+                    <setting id="validate_reprint_receipt" string="Reprint Invoice"
+                        help="Require manager approval for reprint receipt."
+                        invisible="manager_validation != True">
+                        <field name="validate_reprint_receipt"/>
+                    </setting>
+                    <setting id="validate_pricelist" string="Pricelist"
+                        help="Require manager approval for pricelist"
+                        invisible="manager_validation != True">
+                        <field name="validate_pricelist"/>
                     </setting>
                 </block>
             </app>
 
             <!-- Member/Schedule Promo -->
             <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
-                <block title="Prefix Customer" id="pos_member_prefix_customer">
-                    <setting id="member_schedule_activate" string="Prefix Customer"
-                        help="Activate Prefix Customer.">
-                        <field name="validate_prefix_customer"/>
+                <block title="Promo Configuration" id="pos_member_schedule">
+                    <setting id="member_schedule_activate" string="Member Schedule"
+                        help="Activate Member Schedule.">
+                        <field name="validate_member_schedule"/>
+                    </setting>
+                    <setting id="allow_multiple_global_discounts" string="Multiple Discount"
+                        help="Activate Mutliple Discount.">
+                        <field name="allow_multiple_global_discounts"/>
                     </setting>
                 </block>
             </app>

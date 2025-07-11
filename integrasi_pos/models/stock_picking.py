@@ -1,8 +1,9 @@
 import requests
 from datetime import datetime, timedelta
 import pytz
-from odoo import models, fields, api, SUPERUSER_ID
-from odoo.exceptions import UserError
+from odoo import models, fields, api, SUPERUSER_ID, _
+from odoo.exceptions import UserError, ValidationError
+
 import random
 
 class StockPicking(models.Model):
@@ -13,6 +14,23 @@ class StockPicking(models.Model):
     vit_trxid = fields.Char(string="Transaction ID")
     target_location = fields.Many2one('master.warehouse', string="Target Location")
     targets = fields.Char(string="Target Locations")
+
+    @api.model
+    def create(self, vals):
+        picking_type = None
+
+        # Get picking type from vals if available
+        if vals.get('picking_type_id'):
+            picking_type = self.env['stock.picking.type'].browse(vals['picking_type_id'])
+
+        # Check if restricted type and has move lines
+        # restricted_types = ['TS Out', 'TS In', 'GRPO']
+        # if picking_type and picking_type.name in restricted_types and vals.get('move_ids_without_package'):
+        #     raise ValidationError(_(
+        #         "Cannot add items to lines for operation type: %s" % picking_type.name
+        #     ))
+
+        return super(StockPicking, self).create(vals)
 
     def button_validate(self):
         # Check if the operation type is 'Internal Transfers'
@@ -71,3 +89,14 @@ class StockPicking(models.Model):
 
         for res in ts_out:
             res.write({'is_integrated': False})
+
+    # def write(self, vals):
+    #     # If someone tries to modify move_ids on restricted picking types
+    #     for record in self:
+    #         restricted_types = ['TS Out', 'TS In', 'GRPO']
+    #         if record.picking_type_id.name in restricted_types and 'move_ids_without_package' in vals:
+    #             raise ValidationError(_(
+    #                 "You cannot modify or add lines to this operation type: %s" % record.picking_type_id.name
+    #             ))
+
+    #     return super(StockPicking, self).write(vals)

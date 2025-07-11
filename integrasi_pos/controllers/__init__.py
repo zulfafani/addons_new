@@ -8,6 +8,5 @@ from . import post_data_pos
 from . import config_settings
 from . import barcode_search
 from . import barcode
-from . import scan_cam
 # from . import dashboard
 # from . import manual_sync_main  

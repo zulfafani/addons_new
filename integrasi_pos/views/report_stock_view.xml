@@ -5,7 +5,7 @@
       <field name="name">balance.stock.tree</field>
       <field name="model">balance.stock</field>
       <field name="arch" type="xml">
-        <tree>
+        <tree js_class="generate_report_button" create="false">
             <field name="numbering"/>
             <field name="date_stock"/>
             <field name="reference"/>
@@ -37,6 +37,28 @@
         </search>
       </field>
     </record>
+
+    <record id="view_generate_stock_ledger_wizard_form" model="ir.ui.view">
+      <field name="name">wizard.generate.stock.ledger.form</field>
+      <field name="model">wizard.generate.stock.ledger</field>
+      <field name="arch" type="xml">
+        <form string="Generate Stock Ledger">
+          <footer>
+            <button name="action_generate" type="object" string="Generate" confirm="Are you sure you want to continue generate report? This action cannot be undone." class="btn-primary"/>
+            <button string="Cancel" special="cancel" class="btn-secondary"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_generate_stock_ledger_wizard" model="ir.actions.act_window">
+      <field name="name">Generate Report Stock Ledger</field>
+      <field name="res_model">wizard.generate.stock.ledger</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+    </record>
+    
 
     <record id="balance_stock_action" model="ir.actions.act_window">
       <field name="name">Stock Ledger</field>

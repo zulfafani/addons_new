@@ -1,6 +1,8 @@
 <odoo>
   <data>
 
+    
+
     <!-- form view-->
     <record model="ir.ui.view" id="view_pos_order_form">
       <field name="name">pos.order.form</field>
@@ -9,6 +11,7 @@
       <field name="arch" type="xml">
         <xpath expr="//field[@name='partner_id']" position="after">
             <field name="vit_trxid"/>
+            <field name="vit_pos_store"/>
             <field name="is_integrated"/>
             <field name="id_mc"/>
         </xpath>

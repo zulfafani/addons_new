@@ -14,8 +14,13 @@ export class RecallNumberPopup extends AbstractAwaitablePopup {
         this.inputRef = useRef("input");
         this.state = useState({ input: "" });
 
+        this.appendNumber = this.appendNumber.bind(this);
+        this.removeLast = this.removeLast.bind(this);
+        this.clearAll = this.clearAll.bind(this);
+
         onMounted(() => this.inputRef.el?.focus());
     }
+
 
     confirm() {
         const input = this.state.input.trim();

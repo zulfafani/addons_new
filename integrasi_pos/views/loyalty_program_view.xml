@@ -1,13 +1,21 @@
 <odoo>
   <data>
 
-    <!-- form view-->
-    <record model="ir.ui.view" id="view_loyalty_program_form">
-      <field name="name">loyalty.program.form</field>
+    <!-- Inherit form view Loyalty Program -->
+    <record model="ir.ui.view" id="view_loyalty_program_form_custom">
+      <field name="name">loyalty.program.form.custom</field>
       <field name="model">loyalty.program</field>
       <field name="inherit_id" ref="loyalty.loyalty_program_view_form"/>
       <field name="arch" type="xml">
+
+        <!-- Tambahkan field tambahan -->
         <xpath expr="//field[@name='date_to']" position="after">
+            <!-- <field name="allowed_days"/>
+            <field name="start_time"/>
+            <field name="end_time"/>
+            <field name="allowed_partner_ids" widget="many2many_tags"/>
+            <field name="is_member"/> -->
+
             <field name="is_integrated"/>
             <field name="vit_trxid"/>
             <field name="id_mc"/>
@@ -32,6 +40,8 @@
                 </field>
             </page>
         </xpath>
+
+        <!-- readonly handling -->
         <xpath expr="//field[@name='is_integrated']" position="attributes">
           <attribute name="force_save">1</attribute>
           <attribute name="readonly">True</attribute>

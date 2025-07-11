@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="point_of_sale.ProductScreenPatched">
+        <div class="product-screen d-flex h-100" t-att-class="{ 'd-none': !props.isShown }">
+            
+            <!-- ==================== KOLOM 1: CONTROL PANEL (KIRI) ==================== -->
+            <div class="leftpane" 
+                t-att-class="{ 'mobile-active': pos.mobile_pane === 'control' }">
+                <div class="pads">
+                    <!-- Control Buttons Grid -->
+                    <div class="control-buttons">
+                        <t t-foreach="controlButtons" t-as="cb" t-key="cb.name">
+                            <t t-component="cb.component" t-key="cb.name" class="'control-btn-item'"/>
+                        </t>
+                    </div>
+                    
+                    <!-- Numpad + Action Pad -->
+                    <div class="subpads">
+                        <ActionpadWidget
+                            partner="partner"
+                            actionName="constructor.numpadActionName"
+                            actionType="'payment'"
+                            onClickMore.bind="displayAllControlPopup"
+                            class="'actionpad-widget'" />
+                        <Numpad 
+                            buttons="getNumpadButtons()" 
+                            onClick.bind="onNumpadClick"
+                            class="'numpad-widget'" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== KOLOM 2: PRODUCT LIST (TENGAH) ==================== -->
+            <div class="centerpane" 
+                t-att-class="{ 'mobile-active': pos.mobile_pane === 'products' }">
+                <ProductsWidget class="'flex-grow-1'" />
+            </div>
+
+            <!-- ==================== KOLOM 3: ORDER LIST (KANAN) ==================== -->
+            <div class="rightpane" 
+                t-att-class="{ 'mobile-active': pos.mobile_pane === 'order' }">
+                
+                <!-- OrderWidget dengan Loyalty Points -->
+                <OrderWidget 
+                    class="'flex-grow-1 d-flex flex-column overflow-hidden'"
+                    lines="currentOrder.orderlines" 
+                    t-slot-scope="scope"
+                    total="env.utils.formatCurrency(currentOrder.get_total_with_tax())"
+                    tax="!env.utils.floatIsZero(currentOrder.get_total_tax()) and env.utils.formatCurrency(currentOrder.get_total_tax()) or ''">
+                    
+                    <t t-set="line" t-value="scope.line" />
+                    <Orderline 
+                        line="line.getDisplayData()"
+                        t-on-click="() => this.selectLine(line)"
+                        class="{ ...line.getDisplayClasses(), 'selected' : line.selected }">
+                        
+                        <t t-set-slot="product-name">
+                            <i  t-if="line.get_product().isTracked()"
+                                t-on-click.stop="() => line.editPackLotLines()" 
+                                role="img"
+                                t-attf-class="{{ line.has_valid_product_lot() ? 'text-success' : 'text-danger'}} fa fa-list line-lot-icon ms-1"
+                                t-attf-title="{{ line.has_valid_product_lot() ? 'Valid product lot' : 'Invalid product lot'}}" />
+                        </t>
+                        
+                        <ul t-if="line.pack_lot_lines">
+                            <li t-foreach="line.get_lot_lines()" t-as="lot" t-key="lot.cid">
+                                SN <t t-esc="lot.lot_name"/>
+                            </li>
+                        </ul>
+                        
+                        <!-- Gift Card / E-Wallet Balance -->
+                        <li t-if="line.isGiftCardOrEWalletReward()">
+                            Current Balance: <t t-esc="line.getGiftCardOrEWalletBalance()"/>
+                        </li>
+                    </Orderline>
+                    
+                    <!-- LOYALTY POINTS SECTION -->
+                    <t t-set-slot="details">
+                        <t t-foreach="pos.get_order()?.getLoyaltyPoints() or []" t-as="_loyaltyStat" t-key="_loyaltyStat.couponId">
+                            <div t-if="_loyaltyStat.points.won || _loyaltyStat.points.spent" 
+                                class="loyalty-section w-100 border-top mt-auto fw-bolder d-flex flex-column">
+                                <div t-esc="_loyaltyStat.points.name" class="loyalty-points-title" />
+                                <div class="loyalty-points-grid">
+                                    <div t-if='_loyaltyStat.points.balance' 
+                                        class="loyalty-points-balance">
+                                        <span class="text-muted">Balance</span>
+                                        <span class='value'><t t-esc='_loyaltyStat.points.balance'/></span>
+                                    </div>
+                                    <div t-if='_loyaltyStat.points.won' 
+                                        class="loyalty-points-won">
+                                        <span class="text-muted">Won</span>
+                                        <span class='value'>+<t t-esc='_loyaltyStat.points.won'/></span>
+                                    </div>
+                                    <div t-if='_loyaltyStat.points.spent' 
+                                        class="loyalty-points-spent">
+                                        <span class="text-muted">Spent</span>
+                                        <span class='value'>-<t t-esc='_loyaltyStat.points.spent'/></span>
+                                    </div>
+                                    <div class="loyalty-points-total">
+                                        <span class="text-muted">Total</span>
+                                        <span class='value'><t t-esc='_loyaltyStat.points.total'/></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                </OrderWidget>
+            </div>
+
+            <!-- ==================== MOBILE NAVIGATION TABS ==================== -->
+            <div class="mobile-nav-tabs d-md-none" t-if="ui.isSmall">
+                <button 
+                    t-on-click="() => this.setMobilePane('control')"
+                    t-att-class="{ 'active': pos.mobile_pane === 'control' }">
+                    <span class="icon">⚙️</span>
+                    <span>Control</span>
+                </button>
+                <button 
+                    t-on-click="() => this.setMobilePane('products')"
+                    t-att-class="{ 'active': pos.mobile_pane === 'products' }">
+                    <span class="icon">🛍️</span>
+                    <span>Products</span>
+                </button>
+                <button 
+                    t-on-click="() => this.setMobilePane('order')"
+                    t-att-class="{ 'active': pos.mobile_pane === 'order' }">
+                    <span class="icon">🛒</span>
+                    <span>Cart (<t t-esc="currentOrder.orderlines.length"/>)</span>
+                </button>
+            </div>
+
+        </div>
+    </t>
+</templates>

@@ -20,14 +20,37 @@ class ResConfigSettings(models.TransientModel):
     validate_void_sales = fields.Boolean("Void Sales", config_parameter="pos.validate_void_sales", help="Allow manager to reset order.")
     validate_member_schedule = fields.Boolean("Member/Schedule", config_parameter="pos.validate_member_schedule", help="Allow manager to validate member schedule.")
     validate_prefix_customer = fields.Boolean("Prefix Customer", config_parameter="pos.validate_prefix_customer", help="Allow manager to change prefix customer.")
+    validate_cash_drawer = fields.Boolean("Cash Drawer", config_parameter="pos.validate_cash_drawer", help="Allow manager to validate cash drawer.")
+    validate_reprint_receipt = fields.Boolean("Reprint Receipt", config_parameter="pos.validate_reprint_receipt", help="Allow manager to reprint receipt.")
+    validate_pricelist = fields.Boolean("Pricelist", config_parameter="pos.validate_pricelist", help="Allow manager to validate pricelist.")
+    validate_discount_button = fields.Boolean("Discount Button", config_parameter="pos.validate_discount_button", help="Allow manager to validate discount button.")
     one_time_password = fields.Boolean("One Time Password for an Order", config_parameter="pos.one_time_password", help="Require OTP for every function.")
     multiple_barcode_activate = fields.Boolean("Multiple Barcode Activation", config_parameter="pos.multiple_barcode_activate", help="Enable multiple barcode activation.")
+    allow_multiple_global_discounts = fields.Boolean(
+        "Allow Multiple Discounts", 
+        config_parameter="pos.allow_multiple_global_discounts", 
+        help="Allow applying multiple discount rewards in a single order. WARNING: This can result in very high total discounts."
+    )
 
     # Barcode scanner configuration fields
     digit_awal = fields.Integer(string="Digit Awal", help="Starting position for weight extraction", config_parameter="pos.digit_awal")
     digit_akhir = fields.Integer(string="Digit Akhir", help="Ending position for weight extraction", config_parameter="pos.digit_akhir")
     prefix_timbangan = fields.Char(string="Prefix Timbangan", help="Prefix for weight barcode", config_parameter="pos.prefix_timbangan")
     panjang_barcode = fields.Integer(string="Panjang Barcode", help="Length of the barcode weight portion", config_parameter="pos.panjang_barcode")
+
+    # Konfigurasi untuk digits field reward_point_amount
+    reward_point_total_digits = fields.Integer(
+        string="Total Digit (Reward Point)", 
+        config_parameter="reward_point_total_digits",
+        default=16,
+        help="Jumlah total digit untuk field Reward Point."
+    )
+    reward_point_decimal_digits = fields.Integer(
+        string="Digit Desimal (Reward Point)", 
+        config_parameter="reward_point_decimal_digits",
+        default=4,
+        help="Jumlah digit desimal untuk field Reward Point."
+    )
 
     def set_values(self):
         super(ResConfigSettings, self).set_values()
@@ -74,6 +97,11 @@ class ResConfigSettings(models.TransientModel):
                 'one_time_password': config.get_param('pos.one_time_password') == 'True',
                 'validate_discount_amount': config.get_param('pos.validate_discount_amount') == 'True',
                 'multiple_barcode_activate': config.get_param('pos.multiple_barcode_activate') == 'True',
+                'validate_pricelist': config.get_param('pos.validate_pricelist') == 'True',
+                'validate_cash_drawer': config.get_param('pos.validate_cash_drawer') == 'True',
+                'validate_reprint_receipt': config.get_param('pos.validate_reprint_receipt') == 'True',
+                'validate_discount_button': config.get_param('pos.validate_discount_button') == 'True',
+                'allow_multiple_global_discounts': config.get_param('pos.allow_multiple_global_discounts') == 'True',
             }
         except Exception as e:
             return {'error': str(e)}

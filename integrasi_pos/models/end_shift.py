@@ -16,6 +16,10 @@ class EndShiftSession(models.Model):
     start_date = fields.Datetime(string='Start Date', tracking=True)
     end_date = fields.Datetime(string='End Date', tracking=True)
     is_integrated = fields.Boolean(string='Integrated', default=False, tracking=True)
+    
+    # ✅ NEW: Modal field di level end.shift
+    modal = fields.Float(string="Modal", tracking=True, default=0.0, help="Modal awal untuk shift ini")
+    
     state = fields.Selection([
         ('opened', 'Opened'),
         ('in_progress', 'In Progress'),
@@ -23,9 +27,10 @@ class EndShiftSession(models.Model):
         ('finished', 'Finished')
     ], string='Status', default='opened', required=True, copy=False, tracking=True)
 
-    line_ids = fields.One2many('end.shift.line', 'end_shift_id', string='Shift Lines', context={'parent_state': 'state'})
+    line_ids = fields.One2many('end.shift.line', 'end_shift_id', string='Shift Lines')
 
-    pos_order_count = fields.Integer(string='POS Orders', compute='_compute_pos_order_count')
+    # ✅ FIXED: Computed field dengan dependency yang benar
+    pos_order_count = fields.Integer(string='POS Orders', compute='_compute_pos_order_count', store=False)
 
     @api.model
     def check_unclosed_shifts(self, session_id):
@@ -35,41 +40,31 @@ class EndShiftSession(models.Model):
         ])
         return unclosed_shifts.ids
 
-    @api.depends('cashier_id', 'session_id')
+    # ✅ FIXED: Dependency yang benar dan penanganan None values
+    @api.depends('cashier_id', 'session_id', 'start_date', 'end_date')
     def _compute_pos_order_count(self):
         for record in self:
-            # Mendapatkan tanggal hari ini dalam waktu lokal server
-            start_date_str = fields.Datetime.to_string(self.start_date)
-            end_date_str = fields.Datetime.to_string(self.end_date)
-
-            record.pos_order_count = self.env['pos.order'].search_count([
-                ('session_id', '=', record.session_id.id),
-                ('employee_id', '=', record.cashier_id.id),
-                ('state', '=', 'invoiced'),
-                ('create_date', '>=', start_date_str),
-                ('create_date', '<=', end_date_str)
-            ])
+            count = 0
+            if record.cashier_id and record.session_id and record.start_date and record.end_date:
+                count = self.env['pos.order'].search_count([
+                    ('session_id', '=', record.session_id.id),
+                    ('employee_id', '=', record.cashier_id.id),
+                    ('state', '=', 'invoiced'),
+                    ('create_date', '>=', record.start_date),
+                    ('create_date', '<=', record.end_date)
+                ])
+            record.pos_order_count = count
 
     def action_view_pos_orders(self):
         self.ensure_one()
         
-        # Menggunakan start_date dan end_date dari record end.shift
-        start_date_str = fields.Datetime.to_string(self.start_date)
-        end_date_str = fields.Datetime.to_string(self.end_date)
-
         domain = [
             ('session_id', '=', self.session_id.id),
             ('employee_id', '=', self.cashier_id.id),
             ('state', '=', 'invoiced'),
-            ('create_date', '>=', start_date_str),
-            ('create_date', '<=', end_date_str)
+            ('create_date', '>=', self.start_date),
+            ('create_date', '<=', self.end_date)
         ]
-
-        # Untuk debugging
-        orders = self.env['pos.order'].search(domain)
-        print(f"Jumlah pesanan yang ditemukan: {len(orders)}")
-        for order in orders:
-            print(f"Order ID: {order.id}, Create Date: {order.create_date}")
 
         return {
             'name': 'POS Orders',
@@ -115,14 +110,16 @@ class EndShiftSession(models.Model):
 
     def action_start_progress(self):
         for record in self:
-            record.state = 'in_progress'
-            record.line_ids.write({'state': 'in_progress'})
+            # ✅ FIXED: Gunakan context untuk menghindari loop
+            record.with_context(skip_compute=True).write({'state': 'in_progress'})
+            if record.line_ids:
+                record.line_ids.with_context(skip_compute=True).write({'state': 'in_progress'})
 
     def action_close(self):
         for record in self:
             # Update end_date to current time
             current_time = fields.Datetime.now()
-            record.write({
+            record.with_context(skip_compute=True).write({
                 'end_date': current_time,
                 'state': 'closed'
             })
@@ -130,7 +127,7 @@ class EndShiftSession(models.Model):
             # Mencari pos.order yang sesuai
             pos_orders = self.env['pos.order'].search([
                 ('session_id', '=', record.session_id.id),
-                ('employee_id', '=', self.cashier_id.id),
+                ('employee_id', '=', record.cashier_id.id),
                 ('state', '=', 'invoiced'),
                 ('create_date', '>=', record.start_date),
                 ('create_date', '<=', record.end_date)
@@ -145,32 +142,39 @@ class EndShiftSession(models.Model):
                     payment_date = payment.payment_date
 
                     if method_id in payment_data:
-                        payment_data[method_id]['expected_amount'] += amount
+                        payment_data[method_id]['amount'] += amount
                         if payment_date > payment_data[method_id]['payment_date']:
                             payment_data[method_id]['payment_date'] = payment_date
                     else:
                         payment_data[method_id] = {
                             'payment_method_id': method_id,
-                            'expected_amount': amount,
+                            'amount': amount,
                             'payment_date': payment_date,
                         }
 
             # Hapus line_ids yang ada dan buat yang baru
             record.line_ids.unlink()
             for line_data in payment_data.values():
+                # ✅ FIXED: Buat dengan amount, expected_amount akan dihitung otomatis
                 self.env['end.shift.line'].create({
                     'end_shift_id': record.id,
                     'payment_method_id': line_data['payment_method_id'],
-                    'expected_amount': line_data['expected_amount'],
+                    'amount': 0.0,  # kosong, diisi manual nanti oleh kasir
                     'payment_date': line_data['payment_date'],
                     'state': 'closed',
                 })
 
     def action_finish(self):
         for record in self:
-            record.state = 'finished'
-            record.line_ids.write({'state': 'finished'})
-            
+            record.with_context(skip_compute=True).write({'state': 'finished'})
+            if record.line_ids:
+                record.line_ids.with_context(skip_compute=True).write({'state': 'finished'})
+                
+                # ✅ Force recompute expected_amount setelah modal dipastikan diisi
+                record.line_ids._compute_expected_amount()
+                record.line_ids._compute_amount_difference()
+
+            # Close related cashier logs
             cashier_logs = self.env['pos.cashier.log'].search([
                 ('employee_id', '=', record.cashier_id.id),
                 ('session_id', '=', record.session_id.id),
@@ -179,10 +183,7 @@ class EndShiftSession(models.Model):
             if cashier_logs:
                 cashier_logs.write({'state': 'closed'})
 
-    # def action_reset(self):
-    #     for record in self:
-    #         record.state = 'opened'
-    #         record.line_ids.write({'state': 'opened'})
+
 
 class EndShiftSessionLine(models.Model):
     _name = 'end.shift.line'
@@ -191,29 +192,72 @@ class EndShiftSessionLine(models.Model):
     end_shift_id = fields.Many2one('end.shift', string='End Shift Session', required=True, ondelete='cascade')
     payment_date = fields.Datetime(string='Date', tracking=True)
     payment_method_id = fields.Many2one('pos.payment.method', string="Payment Method", tracking=True, required=True)
-    amount = fields.Float(string="Amount", tracking=True)
-    expected_amount = fields.Float(string="Expected Amount", tracking=True)
-    amount_difference = fields.Float(string="Amount Difference", compute='_compute_amount_difference', store=True, tracking=True)
+    
+    # ✅ SAFE: Base field untuk amount yang diterima kasir
+    amount = fields.Float(string="Amount", tracking=True, default=0.0)
+    
+    # ✅ SAFE: Computed field yang bergantung pada modal dari parent + amount
+    expected_amount = fields.Float(
+        string="Expected Amount", 
+        compute='_compute_expected_amount', 
+        store=True, 
+        tracking=True
+    )
+    
+    # ✅ SAFE: Computed field yang bergantung pada computed field lain (linear dependency)
+    amount_difference = fields.Float(
+        string="Amount Difference", 
+        compute='_compute_amount_difference', 
+        store=True, 
+        tracking=True
+    )
+
     state = fields.Selection([
         ('opened', 'Opened'),
         ('in_progress', 'In Progress'),
         ('closed', 'Closed'),
         ('finished', 'Finished')
     ], string='Status', default='opened', required=True, copy=False, tracking=True)
-            
+
+    # ✅ SAFE: Computed method - bergantung pada modal dari parent dan amount
+    @api.depends('end_shift_id.modal', 'payment_method_id', 'end_shift_id.session_id', 'end_shift_id.cashier_id', 'end_shift_id.start_date', 'end_shift_id.end_date')
+    def _compute_expected_amount(self):
+        for record in self:
+            expected = 0.0
+            if record.end_shift_id and record.payment_method_id:
+                Order = record.env['pos.order']
+                domain = [
+                    ('session_id', '=', record.end_shift_id.session_id.id),
+                    ('employee_id', '=', record.end_shift_id.cashier_id.id),
+                    ('state', '=', 'invoiced'),
+                    ('create_date', '>=', record.end_shift_id.start_date),
+                    ('create_date', '<=', record.end_shift_id.end_date),
+                    ('payment_ids.payment_method_id', '=', record.payment_method_id.id),
+                ]
+                orders = Order.search(domain)
+
+                total = 0.0
+                for order in orders:
+                    for payment in order.payment_ids.filtered(lambda p: p.payment_method_id.id == record.payment_method_id.id):
+                        total += payment.amount
+
+                # Tambahkan modal hanya untuk payment method "Cash"
+                # Benar ✅
+                if record.payment_method_id.journal_id and record.payment_method_id.journal_id.type == 'cash':
+                    expected = total + (record.end_shift_id.modal or 0.0)
+                else:
+                    expected = total
+            record.expected_amount = expected
+
+
+    # ✅ SAFE: Computed method - bergantung pada computed field yang sudah dihitung
     @api.depends('amount', 'expected_amount')
     def _compute_amount_difference(self):
         for record in self:
-            record.amount_difference = record.amount - record.expected_amount
+            record.amount_difference = (record.amount or 0.0) - (record.expected_amount or 0.0)
 
-    @api.model
-    def create(self, vals):
-        res = super(EndShiftSessionLine, self).create(vals)
-        res._compute_amount_difference()
-        return res
-
+    # ✅ SAFE: Override write tanpa memanggil computed field secara manual
     def write(self, vals):
-        res = super(EndShiftSessionLine, self).write(vals)
-        if 'amount' in vals or 'expected_amount' in vals:
-            self._compute_amount_difference()
-        return res
+        result = super(EndShiftSessionLine, self).write(vals)
+        # Computed fields akan otomatis dipicu oleh @api.depends
+        return result

@@ -21,6 +21,24 @@ patch(ProductScreen.prototype, {
         const qty_desimal = timbangPart.slice(digitAwal, digitAwal + digitAkhir);
         const quantity = parseFloat(`${qty_bulat}.${qty_desimal}`);
 
+        // 🧪 Debug log
+        console.log("📏 Barcode timbang parsed: ", {
+            barcode,
+            timbangPart,
+            qty_bulat,
+            qty_desimal,
+            quantity,
+        });
+
+        console.log("📦 Timbangan Debug", {
+            barcode,
+            panjangBarcode,
+            timbangPart: barcode.slice(-panjangBarcode),
+            digitAwal,
+            digitAkhir
+        });
+
+
         return quantity;
     },
 
@@ -55,38 +73,69 @@ patch(ProductScreen.prototype, {
     async _getMatchingBarcodeProducts(barcode) {
         const config = this.pos.config;
         const panjangBarcode = parseInt(config?.panjang_barcode || "7");
-        const kode_produk = barcode.slice(0, barcode.length - panjangBarcode);
+        const prefix = config?.prefix_timbangan || "20";
+        const panjangPrefix = prefix.length;
         const resultProducts = [];
 
-        const pushIfValid = (product) => {
-            if (product && product.available_in_pos) {
-                resultProducts.push(product);
-            }
-        };
+        let kode_produk = null;
 
-        // 1️⃣ Match produk timbang (to_weight)
-        const productWeightCandidate = this.pos.db.get_product_by_barcode(kode_produk);
-        pushIfValid(productWeightCandidate?.to_weight ? productWeightCandidate : null);
+        // Check if barcode starts with timbangan prefix
+        if (barcode.startsWith(prefix)) {
+            const panjangKodeProduk = barcode.length - panjangBarcode - panjangPrefix;
+
+            if (panjangKodeProduk > 0) {
+                kode_produk = barcode.slice(panjangPrefix, panjangPrefix + panjangKodeProduk);
+                console.log("🔍 [TIMBANGAN DETECTED] Barcode parsing:", {
+                    barcode,
+                    prefix,
+                    panjangPrefix,
+                    panjangBarcode,
+                    panjangKodeProduk,
+                    kode_produk,
+                });
+
+                const productWeightCandidate = this.pos.db.get_product_by_barcode(kode_produk);
+                if (productWeightCandidate?.to_weight) {
+                    resultProducts.push(productWeightCandidate);
+                }
+            } else {
+                console.warn("⚠️ Panjang kode produk <= 0. Cek konfigurasi prefix dan panjang barcode.");
+            }
+        }
 
         // 2️⃣ Match full barcode langsung
         const directMatch = this.pos.db.get_product_by_barcode(barcode);
-        pushIfValid(directMatch?.to_weight ? null : directMatch);
+        if (directMatch && !directMatch.to_weight) {
+            resultProducts.push(directMatch);
+        }
 
         // 3️⃣ Multi-barcode mode ✅
         if (config?.multiple_barcode_activate && this.pos.db?.product_by_id) {
+            console.log("✅ [MULTI-BARCODE MODE ACTIVE] Scanning with multiple_barcode_activate = TRUE");
+
             const allProducts = Object.values(this.pos.db.product_by_id);
             for (const product of allProducts) {
                 const matches = (product.multi_barcode_ids || []).some(bc =>
                     bc === barcode || bc === kode_produk
                 );
-                if (matches && product.available_in_pos) {
+                if (matches) {
                     resultProducts.push(product);
+                    console.log("📡 Multiple Barcode Match Detected:", {
+                        barcode_scanned: barcode,
+                        matched_with: product.multi_barcode_ids,
+                        matched_product_id: product.id,
+                        matched_product_name: product.display_name || product.name,
+                    });
                 }
             }
+        } else {
+            console.log("⚠️ [MULTI-BARCODE MODE INACTIVE] Skipping multi-barcode check.");
         }
 
+        // Remove duplicates
         return [...new Set(resultProducts)].filter(Boolean);
     },
+
 
     async _barcodeProductAction(parsedBarcode) {
         const barcode = parsedBarcode?.code || parsedBarcode?.base_code || "";
@@ -159,9 +208,7 @@ patch(ProductScreen.prototype, {
             product = this.pos.db.get_product_by_barcode(barcode);
         }
 
-        if (!product || !product.available_in_pos) {
-            return null;
-        }
+        if (!product) return null;
 
         let quantity = 1;
         if (product.to_weight) {

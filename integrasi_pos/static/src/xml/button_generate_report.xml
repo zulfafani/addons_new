@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+  <!-- Extend List View with a custom button -->
+  <t t-name="integrasi_pos.ListViewButtonsExt" owl="1">
+    <div class="o_list_buttons d-flex justify-content-end">
+      <button type="button"
+              class="btn btn-secondary o_button_generate_report"
+              t-on-click="onGenerateReport">
+        Generate Report
+      </button>
+    </div>
+  </t>
+</templates>

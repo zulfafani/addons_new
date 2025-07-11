@@ -1,17 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-  <t t-name="integrasi_pos.BarcodeScannerTemplate" owl="1">
-    <div>
-      <!-- Video Scanner Container -->
-      <div t-ref="reader" t-att-id="'reader'" style="width:100%;max-width:500px;height:auto;border:1px solid #ccc;"></div>
-      
-      <!-- Stop Button -->
-      <button type="button"
-              class="btn btn-danger mt-2"
-              t-on-click="stopCamera"
-              style="margin-top: 10px;">
-        Stop Kamera
-      </button>
+  <!-- Main Barcode Scanner Template -->
+  <t t-name="integrasi_pos.BarcodeScannerCameraSelector" owl="1">
+    <div class="barcode-scanner-widget d-flex flex-column gap-3">
+
+      <!-- Camera Selector -->
+      <div>
+        <label class="form-label">Pilih Kamera:</label>
+        <select t-on-change="onChangeCamera" class="form-select">
+          <t t-foreach="state.devices" t-as="device" t-key="device.id">
+            <option t-att-value="device.id" t-att-selected="device.id === state.selectedDeviceId">
+              <t t-esc="device.label"/>
+            </option>
+          </t>
+        </select>
+      </div>
+
+      <!-- Scanner Preview Box -->
+      <div class="camera-container">
+        <div t-ref="reader"
+             id="barcode-scanner-reader"
+             class="barcode-camera-box">
+        </div>
+      </div>
+
+      <!-- Status Info -->
+      <div t-if="state.waitingForQuantity" class="alert alert-info">
+        <i class="fa fa-info-circle"></i> Menunggu input quantity untuk barcode: <strong t-esc="state.currentBarcode"/>
+      </div>
+
+      <!-- Button Controls -->
+      <div class="d-flex flex-wrap gap-2 justify-content-start">
+        <button t-if="!state.scanning and !state.waitingForQuantity"
+                t-on-click="startScanning"
+                class="btn btn-primary">
+          🎥 Start Scanning
+        </button>
+
+        <button t-if="state.scanning and !state.waitingForQuantity"
+                t-on-click="stopScanning"
+                class="btn btn-danger">
+          🛑 Stop Scanning
+        </button>
+
+        <div t-if="state.waitingForQuantity" class="btn btn-warning disabled">
+          ⏸️ Paused - Input Quantity
+        </div>
+      </div>
+
     </div>
   </t>
 </templates>

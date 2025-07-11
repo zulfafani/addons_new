@@ -9,7 +9,6 @@
             <tree string="Multiple Barcodes Configuration" editable="bottom">
                 <field name="barcode"/>
                 <field name="product_id"/>
-                <field name="id_mc"/>
             </tree>
         </field>
     </record>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="integrasi_pos_loyalty.PromoInfoButton" owl="1">
+        <div class="control-button" t-on-click="onClick">
+            <i class="fa fa-gift"/> Promo
+        </div>
+    </t>
+</templates>

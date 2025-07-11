@@ -17,12 +17,12 @@
                 <div class="input-container my-2">
                     <div class="input-field" t-att-class="state.error ? 'error form-control' : 'form-control'">
                         <span t-esc="state.inputValue || props.placeholder" 
-                              t-att-class="!state.inputValue ? 'placeholder text-muted' : ''" />
+                            t-att-class="!state.inputValue ? 'placeholder text-muted' : ''" />
                     </div>
                     <div class="error-message text-danger" t-if="state.error" t-esc="state.error"/>
                 </div>
 
-                <!-- Numeric Keyboard -->
+                <!-- Numpad with '.' and no backspace -->
                 <div class="numpad-grid mb-3">
                     <button t-on-click="() => this.onKeyPress('1')">1</button>
                     <button t-on-click="() => this.onKeyPress('2')">2</button>
@@ -33,16 +33,13 @@
                     <button t-on-click="() => this.onKeyPress('7')">7</button>
                     <button t-on-click="() => this.onKeyPress('8')">8</button>
                     <button t-on-click="() => this.onKeyPress('9')">9</button>
+                    <button t-on-click="() => this.onKeyPress('.')">.</button>
+                    <button t-on-click="() => this.onKeyPress('0')">0</button>
                     <button t-on-click="() => this.onKeyPress('clear')" class="btn-clear">
                         <i class="fa fa-trash"/> Clear
                     </button>
-                    <button t-on-click="() => this.onKeyPress('0')">0</button>
-                    <button t-on-click="() => this.onKeyPress('backspace')" class="btn-backspace">
-                        <i class="fa fa-backspace"/> ⌫
-                    </button>
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="button-container d-flex justify-content-between">
                     <button class="btn btn-primary fw-bold" t-on-click="confirm">
                         <t t-esc="props.confirmText or 'OK'"/>
@@ -54,4 +51,5 @@
             </main>
         </div>
     </t>
+
 </templates>

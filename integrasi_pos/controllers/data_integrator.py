@@ -22,7 +22,9 @@ class DataIntegrator:
                 'res.users': 'login',
                 'stock.location': 'complete_name',
                 'account.account': 'code',
-                'loyalty.card': 'code'
+                'loyalty.card': 'code',
+                'multiple.barcode': 'barcode',
+                'purchase.order': 'vit_trxid',
             }
             return field_uniq_mapping.get(model, 'name')
         except Exception as e:
@@ -30,14 +32,27 @@ class DataIntegrator:
             self.set_log_ss.create_log_note_failed(f"Exception - {model}", model, f"Error occurred when getting param existing data: {e}", None)
 
     # Master Console --> Store Server
-    def get_existing_data(self, model, field_uniq, fields):
+    def get_existing_data(self, model, field_uniq, fields, existing_datalist):
         try:
             fields_target = fields.copy() # kalau tidak pakai copy makan value fields akan berubah juga sama seperti fields_target
-            fields_target.extend(['id_mc'])
+            if model != 'purchase.order':
+                fields_target.extend(['id_mc'])
+            existing_datalist = list(existing_datalist)  # ubah set ke list
 
-            existing_data = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                        self.target_client.uid, self.target_client.password, model,
-                                                        'search_read', [[[field_uniq, '!=', False]]], {'fields': fields_target}) # , {'fields': [field_uniq]}
+            # Step 1: Cari semua ID yang memenuhi kondisi
+            ids = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password, model,
+                                                'search', [[[field_uniq, 'in', existing_datalist]]])
+
+            # Step 2: Read per batch dengan fields_target
+            existing_data = []
+            batch_size=2000
+            for i in range(0, len(ids), batch_size):
+                batch_ids = ids[i:i + batch_size]
+                batch_data = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                self.target_client.uid, self.target_client.password, model,
+                                                'read', [batch_ids], {'fields': fields_target})
+                existing_data.extend(batch_data)
             return existing_data
         except Exception as e:
             self.set_log_mc.create_log_note_failed(f"Exception - {model}", f"{model} from {self.source_client.server_name} to {self.target_client.server_name}", e, None)
@@ -110,6 +125,26 @@ class DataIntegrator:
                                                         '&',  # AND untuk kondisi lainnya
                                                         [field_uniq, '!=', False], ['is_integrated', '=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
                                                     {'fields': fields})
+            elif model == 'product.template':
+                ids = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                    self.source_client.password, model, 'search', [[[field_uniq, '!=', False], ['is_integrated', '=', False], ['vit_is_discount', '=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]]) 
+                data_list = []
+                batch_size=2000
+                for i in range(0, len(ids), batch_size):
+                    batch_ids = ids[i:i + batch_size]
+                    batch_data = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                    self.source_client.uid, self.source_client.password, model,
+                                                    'read', [batch_ids], {'fields': fields})
+                    data_list.extend(batch_data)
+            elif model == 'purchase.order':
+                data_master_conf = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                        self.source_client.password, 'setting.config', 'search_read', [[]]) # ['vit_config_server', '!=', 'mc'], ['vit_linked_server', '=', 'True']
+            
+                ss_data = [item for item in data_master_conf if item['vit_config_server'] != 'mc' and item['vit_linked_server']]
+                index_field_store_name = next((item['vit_config_server_name'] for item in ss_data if item['vit_config_server_name'] == self.target_client.server_name), None)
+                data_list = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                    self.source_client.password, model, 'search_read', [[[field_uniq, '!=', False], ['state', '=', 'purchase'], ['is_integrated', '=', False], ['picking_type_id.warehouse_id.name', '=', index_field_store_name], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
+                                                    {'fields': fields})  # , 'limit': 1 , 'limit': 100 debug False [field_uniq, '!=', False], 
             else:
                 data_list = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
                                                     self.source_client.password, model, 'search_read', [[[field_uniq, '!=', False], ['is_integrated', '=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
@@ -164,6 +199,9 @@ class DataIntegrator:
             elif model == 'res.partner':
                 filter = []
                 fields = ['customer_code', 'name']
+            elif model == 'purchase.order.line':
+                filter = []
+                fields = ['product_id', 'name', 'product_qty', 'qty_received', 'qty_invoiced', 'product_uom', 'price_unit', 'taxes_id']
             else:
                 filter = []
                 field_uniq_relation_source_all = self.get_field_uniq_from_model(model)
@@ -183,6 +221,8 @@ class DataIntegrator:
                 fields = ['product_tmpl_id', 'min_quantity', 'fixed_price', 'date_start', 'date_end', 'compute_price', 'percent_price', 'base', 'price_discount', 'price_surcharge', 'price_round', 'price_min_margin', 'price_max_margin', 'applied_on', 'categ_id', 'product_id', 'id_mc']
             elif model == 'account.tax.repartition.line':
                 fields = ['tax_id','factor_percent','repartition_type', 'account_id','tag_ids', 'document_type', 'use_in_tax_closing']
+            elif model == 'purchase.order.line':
+                fields = ['product_id', 'name', 'product_qty', 'qty_received', 'qty_invoiced', 'product_uom', 'price_unit', 'taxes_id']
             else:
                 field_uniq_relation_source_all = self.get_field_uniq_from_model(model)
                 fields = [field_uniq_relation_source_all]
@@ -262,7 +302,8 @@ class DataIntegrator:
                                                         ['name', '!=', 'False'], ['is_integrated', '=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
                                                     {'fields': fields}) # , 'limit': 1
             if data_list:
-                existing_data_target = self.get_existing_data(model, 'name', fields) # 1 calling odoo
+                existing_datalist = {data['name'] for data in data_list}
+                existing_data_target = self.get_existing_data(model, 'name', fields, existing_datalist) # 1 calling odoo
                 existing_data = {data['name'] for data in existing_data_target}
                 filtered_data_for_update = [item for item in data_list if item['name'] in existing_data]
 
@@ -291,18 +332,10 @@ class DataIntegrator:
         try:  
             field_uniq = self.get_field_uniq_from_model(model)
             data_list = self.get_data_list(model, fields, field_uniq, date_from, date_to)
-            # buat update dadakan di mc
-            # ids = [item['id'] for item in data_list]
-            # ids = [2972]
-            # self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
-            #                                     self.source_client.password, 'product.pricelist.item', 'write', [ids, {'is_integrated': True, 'is_updated': False}]) # ,  'mobile': '+62', 'website': 'wwww.test_cust.co.id', 'title': 3
-            # for id in ids:
-            #     self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
-            #                                     self.source_client.password, model, 'write', [id, {'customer_code': f"Cust_test{id}"}]) # {'is_integrated': False }, 'categ_id' : 7, 'available_in_pos' : False
-
             if data_list:
+                existing_datalist = {data[field_uniq] for data in data_list}
                 len_master, last_master_url, index_store_field = self.get_master_conf()
-                existing_data_target = self.get_existing_data(model, field_uniq, fields) # 1 calling odoo
+                existing_data_target = self.get_existing_data(model, field_uniq, fields, existing_datalist) # 1 calling odoo
                 existing_data = {data[field_uniq] for data in existing_data_target}
                 type_fields, relation_fields = self.get_type_data_source(model, fields) # 2 calling odoo
 
@@ -320,7 +353,12 @@ class DataIntegrator:
                     many_target = self.get_relation_target_all(relation_model) # 5 1 x relation_fields calling odoo # pilih mau field apa aja?
                     dict_relation_target[relation_model] = many_target
 
-                if model == 'account.tax' or model == 'product.pricelist':
+                if model == 'product.tag':
+                    model_line = 'product.template'
+                    fields_line = ['name', 'default_code', 'description']
+                    type_fields_line, relation_fields_line = self.get_type_data_source(model_line, fields_line)
+                
+                if model == 'account.tax' or model == 'product.pricelist' or model == 'purchase.order':
                     if model == 'product.pricelist':
                         model_line = 'product.pricelist.item'
                         fields_line = ['product_tmpl_id', 'min_quantity', 'fixed_price', 'date_start', 'date_end', 'compute_price', 'percent_price', 'base', 'price_discount', 'price_surcharge', 'price_round', 'price_min_margin', 'applied_on', 'categ_id', 'product_id']
@@ -328,6 +366,10 @@ class DataIntegrator:
                     elif model == 'account.tax':
                         model_line = 'account.tax.repartition.line'
                         fields_line = ['tax_id','factor_percent','repartition_type', 'account_id','tag_ids', 'document_type', 'use_in_tax_closing']
+                        type_fields_line, relation_fields_line = self.get_type_data_source(model_line, fields_line)
+                    elif model == 'purchase.order':
+                        model_line = 'purchase.order.line'
+                        fields_line = ['product_id', 'name', 'product_qty', 'qty_received', 'qty_invoiced', 'product_uom', 'price_unit', 'taxes_id']
                         type_fields_line, relation_fields_line = self.get_type_data_source(model_line, fields_line)
                         
                     for relation_line in relation_fields_line:
@@ -370,39 +412,55 @@ class DataIntegrator:
                         self.set_log_ss.create_log_note_failed(f"Exception - {model}", model, f"Error occurred while processing record data: {e}", None)
 
             if data_for_create:
-                start_time = time.time()
-                create = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                                self.target_client.password, model, 'create', [data_for_create])
-                end_time = time.time()
-                duration = end_time - start_time
+                batch_size = 2000
+                total_records = len(data_for_create)
 
-                print(create)
+                for i in range(0, total_records, batch_size):
+                    batch_data = data_for_create[i:i+batch_size]  # ambil 2000 record per loop
 
-                if create:
-                    for index, data_create in enumerate(data_for_create):
-                        if model == 'product.pricelist':
-                            item_line = data_for_create[index]['item_ids']
-                            id_line = [item[2]['id'] for item in item_line]
-                            id_line_for_update_isintegrated.extend(id_line)  
-                        id_mc = data_create['id']
-                        write_date = data_create['write_date']
-                        log_record = self.set_log_mc.log_record_success(data_create, start_time, end_time, duration, modul, write_date, self.source_client.server_name, self.target_client.server_name)
-                        log_data_created.append(log_record)
-                        id_mc_for_update_isintegrated.append(id_mc)
-                
-                    self.update_indexstore_source(model, id_mc_for_update_isintegrated, index_store_field)
-                    if model == 'product.pricelist':
-                        self.update_indexstore_source('product.pricelist.item', id_line_for_update_isintegrated, index_store_field)
-                    
-                    if self.target_client.server_name == last_master_url:
-                        index_store_data = self.get_index_store_data(model, id_mc_for_update_isintegrated, len_master)
-                        self.update_isintegrated_source(model, index_store_data)
-                        if model == 'product.pricelist':
-                            index_store_data = self.get_index_store_data('product.pricelist.item', id_line_for_update_isintegrated, len_master)
-                            self.update_isintegrated_source('product.pricelist.item', index_store_data)
-                        
-                    self.set_log_mc.create_log_note_success(log_data_created)
-                    self.set_log_ss.create_log_note_success(log_data_created)
+                    start_time = time.time()
+                    create = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
+                                    self.target_client.password, model, 'create', [batch_data])
+                    end_time = time.time()
+                    duration = end_time - start_time
+
+                    # print(create)
+
+                    if create:
+                        for index, data_create in enumerate(data_for_create):
+                            if model == 'product.pricelist':
+                                item_line = data_for_create[index]['item_ids']
+                                id_line = [item[2]['id'] for item in item_line]
+                                id_line_for_update_isintegrated.extend(id_line)  
+                            id_mc = data_create['id']
+                            write_date = data_create['write_date']
+                            log_record = self.set_log_mc.log_record_success(data_create, start_time, end_time, duration, modul, write_date, self.source_client.server_name, self.target_client.server_name)
+                            log_data_created.append(log_record)
+                            id_mc_for_update_isintegrated.append(id_mc)
+
+                        if model == 'purchase.order':
+                            self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                    self.target_client.uid, self.target_client.password,
+                                                    'purchase.order', 'button_confirm',
+                                                    [create])
+                            self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
+                                                self.source_client.password, model, 'write', [id_mc_for_update_isintegrated, {'is_integrated': True}])
+                            self.set_log_mc.create_log_note_success(log_data_created)
+                            self.set_log_ss.create_log_note_success(log_data_created)
+                        else:
+                            self.update_indexstore_source(model, id_mc_for_update_isintegrated, index_store_field)
+                            if model == 'product.pricelist':
+                                self.update_indexstore_source('product.pricelist.item', id_line_for_update_isintegrated, index_store_field)
+                            
+                            if self.target_client.server_name == last_master_url:
+                                index_store_data = self.get_index_store_data(model, id_mc_for_update_isintegrated, len_master)
+                                self.update_isintegrated_source(model, index_store_data)
+                                if model == 'product.pricelist':
+                                    index_store_data = self.get_index_store_data('product.pricelist.item', id_line_for_update_isintegrated, len_master)
+                                    self.update_isintegrated_source('product.pricelist.item', index_store_data)
+                                
+                            self.set_log_mc.create_log_note_success(log_data_created)
+                            self.set_log_ss.create_log_note_success(log_data_created)
             # #     # self.set_log_mc.delete_data_log_failed(record['name'])
             # #     # self.set_log_ss.delete_data_log_failed(record['name'])
         except Exception as e:
@@ -480,9 +538,17 @@ class DataIntegrator:
                 record['invoice_repartition_line_ids'] = self.transfer_tax_lines_invoice(filtered_taxes_invoice, 'account.tax.repartition.line', record, dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
                 filtered_taxes_refund = [item for item in dict_relation_source.get('account.tax.repartition.line', []) if item['id'] in record.get('refund_repartition_line_ids', [])]
                 record['refund_repartition_line_ids'] = self.transfer_tax_lines_refund(filtered_taxes_refund, 'account.tax.repartition.line', record, dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)    
+            if model == 'purchase.order':
+                filtered_purchase = [item for item in dict_relation_source.get('purchase.order.line', []) if item['id'] in record.get('order_line', [])]
+                record['order_line'] = self.transfer_pricelist_lines(filtered_purchase, 'purchase.order.line', [record], dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
+            elif model == 'product.tag':
+                filtered_product_tag = [item for item in dict_relation_source.get('product.template', []) if item['id'] in record.get('product_template_ids', [])]
             valid_record = self.validate_record_data(record, model, [record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
             if valid_record:
-                record['id_mc'] = id_mc
+                if model != 'purchase.order':
+                    record['id_mc'] = id_mc
+                if model == 'purchase.order' and record['order_line'] == None:
+                        return None
                 return record
         except Exception as e:
             self.set_log_mc.create_log_note_failed(f"Exception - {model}", f"{model} from {self.source_client.server_name} to {self.target_client.server_name}", f"Error occurred while processing record: {e}", None)
@@ -494,13 +560,20 @@ class DataIntegrator:
             id_for_update_index_store = None
             code = record.get(field_uniq)
             target_record = next((item for item in existing_data_target if item[field_uniq] == code), None)
-            # record = self.validate_record_data_update_before(record, model, [record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
-            # target_record = self.validate_record_data_update_before(target_record, model, [target_record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
+            
+            # DEBUG: Logging untuk product.template
+            if model == 'product.template':
+                print(f"\n{'='*60}")
+                print(f"DEBUG - Product: {record.get('name')} ({code})")
+                print(f"Source list_price: {record.get('list_price')} (type: {type(record.get('list_price'))})")
+                print(f"Target list_price: {target_record.get('list_price')} (type: {type(target_record.get('list_price'))})")
+                print(f"Are they different? {record.get('list_price') != target_record.get('list_price')}")
+                print(f"{'='*60}\n")
 
             if model == 'product.pricelist':
                 filtered_pricelist = [item_line for item_line in dict_relation_source.get('product.pricelist.item', []) if item_line['id'] in record.get('item_ids', [])]
                 filtered_pricelist_target = [item_line_target for item_line_target in dict_relation_target.get('product.pricelist.item', []) 
-                             if any(int(item_line_target.get('id_mc', 0)) == item_line.get('id') for item_line in filtered_pricelist)]
+                            if any(int(item_line_target.get('id_mc', 0)) == item_line.get('id') for item_line in filtered_pricelist)]
 
                 record['item_ids'] = self.transfer_pricelist_lines_update(filtered_pricelist, 'product.pricelist.item', [record], dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
                 target_record['item_ids'] = self.transfer_pricelist_lines_update_target(filtered_pricelist_target, 'product.pricelist.item', [target_record], dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
@@ -535,48 +608,48 @@ class DataIntegrator:
                     for data_update in data_for_line_update:
                         if isinstance(data_update, dict) and 'id' in data_update:
                             id_mc = data_for_line_update[0]['id']
+                
                 for id in record['item_ids']:
                     id_line_mc = [id['id']]
                     filtered_pricelist_target = [item_line_target for item_line_target in dict_relation_target.get('product.pricelist.item', []) if int(item_line_target.get('id_mc', 0)) in id_line_mc]
+
+            # Perbandingan field dengan handling khusus untuk numeric fields
+            numeric_fields = ['list_price', 'standard_price', 'weight', 'volume']
+            updated_fields = {}
+            
+            for field in record:
+                if field in ('id', 'create_date', 'write_date'):
+                    continue
+                    
+                source_value = record.get(field)
+                target_value = target_record.get(field)
                 
-                # for id in target_record['item_ids']:
-                #     id_line_target = id['id']
-                #     id_line_mc = id['id_mc']
-                #     if id_line_mc:
-                #         updated_filtered_pricelist = [item_line for item_line in dict_relation_source.get('product.pricelist.item', []) if item_line['id'] == int(id_line_mc)]
-                #         updated_filtered_pricelist = updated_filtered_pricelist[0] if updated_filtered_pricelist else {}
-                #         start_time = time.time()
-                #         # update product.pricelist
-                #         update_line = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                #                                     self.target_client.password, 'product.pricelist.item', 'write', [id_line_target, updated_filtered_pricelist])
-                #         end_time = time.time()
-                #         duration = end_time - start_time
-                #     # elif not id_line_mc:
-                #     #     update_line_mc = {}
+                # Untuk field numerik, gunakan toleransi untuk menghindari masalah presisi float
+                if field in numeric_fields:
+                    # Pastikan kedua nilai adalah numeric
+                    if isinstance(source_value, (int, float)) and isinstance(target_value, (int, float)):
+                        # Gunakan toleransi kecil untuk perbandingan float
+                        if abs(float(source_value) - float(target_value)) > 0.001:
+                            updated_fields[field] = source_value
+                            if model == 'product.template':
+                                print(f"Field {field} added to updated_fields: {source_value} vs {target_value}")
+                    # Handle case dimana salah satu None atau False
+                    elif source_value != target_value:
+                        updated_fields[field] = source_value
+                        if model == 'product.template':
+                            print(f"Field {field} added to updated_fields (non-numeric): {source_value} vs {target_value}")
+                else:
+                    # Untuk field non-numerik, gunakan perbandingan biasa
+                    if source_value != target_value:
+                        updated_fields[field] = source_value
 
-                #     #     update_line = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                #     #                                 self.target_client.password, 'product.pricelist.item', 'write', [id_line_target, updated_filtered_pricelist])
-                #     # else:
-                #     #     lines_update = record['item_ids']
-                #     #     lines_target = target_record['item_ids']
-                #     #     filtered_lines = [item for item in lines_update if item['id'] not in lines_target]
-                        
-                #     #     if filtered_lines:
-                #     #         for line in filtered_lines:
-                #     #             line['pricelist_id'] = record_id
-                            
-                #     #         start_time = time.time()
-                #     #         create = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                #     #                         self.target_client.password, 'product.pricelist.item', 'create', [filtered_lines])
-                #     #         end_time = time.time()
-                #     #         duration = end_time - start_time
-
-                #     #         if create:
-                #     #             write_date = record['write_date']
-                #     #             self.set_log_mc.create_log_note_update_success(record, record_id, filtered_lines, start_time, end_time, duration, modul, write_date, self.source_client.server_name, self.target_client.server_name)
-                #     #             self.set_log_ss.create_log_note_update_success(record, record_id, filtered_lines, start_time, end_time, duration, modul, write_date)
-
-            updated_fields = {field: record[field] for field in record if record.get(field) != target_record.get(field) and field not in ('id', 'create_date', 'write_date')}
+            # DEBUG: Log updated_fields sebelum filtering
+            if model == 'product.template':
+                print(f"Updated fields BEFORE filtering: {list(updated_fields.keys())}")
+                if 'list_price' in updated_fields:
+                    print(f"✓ list_price IS in updated_fields: {updated_fields['list_price']}")
+                else:
+                    print(f"✗ list_price NOT in updated_fields")
 
             if 'id_mc' in target_record and target_record['id_mc'] == False:
                 updated_fields['id_mc'] = record['id']
@@ -589,56 +662,109 @@ class DataIntegrator:
                 field_data_source = []
                 field_data_target = []
 
+                # Filter untuk many2one fields
                 fields_many2one_to_check = [
-                    'title', 'categ_id', 'category_id',  'uom_id', 'uom_po_id', 'parent_id', 'location_id', 'partner_id', 'sequence_id', 'warehouse_id',
-                    'default_location_src_id', 'return_picking_type_id', 'default_location_dest_id']
+                    'title', 'categ_id', 'category_id', 'uom_id', 'uom_po_id', 'parent_id', 
+                    'location_id', 'partner_id', 'sequence_id', 'warehouse_id',
+                    'default_location_src_id', 'return_picking_type_id', 'default_location_dest_id', 
+                    'product_tmpl_id'
+                ]
+                
                 for field in updated_fields:
                     if field in fields_many2one_to_check:
-                        if record[field][1] == target_record[field][1]:
-                            keys_to_remove.append(field) 
+                        # Pastikan kedua field ada dan merupakan list sebelum dibandingkan
+                        source_field = record.get(field)
+                        target_field = target_record.get(field)
+                        
+                        if isinstance(source_field, list) and isinstance(target_field, list):
+                            if len(source_field) > 1 and len(target_field) > 1:
+                                if source_field[1] == target_field[1]:
+                                    keys_to_remove.append(field)
+                        elif source_field == target_field:
+                            keys_to_remove.append(field)
 
+                # Filter untuk many2many fields
                 fields_many2many_to_check = ['taxes_id', 'pos_categ_ids']
                 for field in updated_fields:
                     if field in fields_many2many_to_check:
-                        relation_model = relation_fields[field]
+                        relation_model = relation_fields.get(field)
                         
-                        field_value_source = record.get(field)
-                        for data_source in field_value_source:
-                            name_source = dict_relation_source[relation_model]
-                            value_source = next((item['name'] for item in name_source if item['id'] == data_source), None)
-                            field_data_source.append(value_source)
-                        
-                        field_value_target = target_record.get(field)
-                        for data_target in field_value_target:
-                            name_target = dict_relation_target[relation_model]
-                            value_target = next((item['name'] for item in name_target if item['id'] == data_target), None)
-                            field_data_target.append(value_target)
-                        
-                        if field_data_source == field_data_target:
-                            keys_to_remove.append(field)
+                        if relation_model:
+                            field_data_source = []
+                            field_data_target = []
+                            
+                            field_value_source = record.get(field)
+                            if field_value_source:
+                                for data_source in field_value_source:
+                                    name_source = dict_relation_source.get(relation_model, [])
+                                    value_source = next((item['name'] for item in name_source if item['id'] == data_source), None)
+                                    if value_source:
+                                        field_data_source.append(value_source)
+                            
+                            field_value_target = target_record.get(field)
+                            if field_value_target:
+                                for data_target in field_value_target:
+                                    name_target = dict_relation_target.get(relation_model, [])
+                                    value_target = next((item['name'] for item in name_target if item['id'] == data_target), None)
+                                    if value_target:
+                                        field_data_target.append(value_target)
+                            
+                            if sorted(field_data_source) == sorted(field_data_target):
+                                keys_to_remove.append(field)
 
+                # Filter untuk one2many fields
                 fields_one2many_to_remove = ['invoice_repartition_line_ids', 'refund_repartition_line_ids', 'item_ids']
                 for field in updated_fields:
                     if field in fields_one2many_to_remove:
                         keys_to_remove.append(field)
 
-                # Remove the fields after iteration
+                # DEBUG: Log fields yang akan dihapus
+                if model == 'product.template':
+                    print(f"Fields to remove: {keys_to_remove}")
+                    if 'list_price' in keys_to_remove:
+                        print(f"WARNING: list_price is in keys_to_remove!")
+
+                # PENTING: Jangan hapus field numeric penting
+                protected_fields = ['list_price', 'standard_price', 'weight', 'volume']
+                
+                # Remove the fields after iteration (kecuali protected fields)
                 for key in keys_to_remove:
-                    del updated_fields[key]
+                    if key not in protected_fields:
+                        del updated_fields[key]
+                    elif model == 'product.template':
+                        print(f"PROTECTED: {key} not removed from updated_fields")
+
+                # DEBUG: Log updated_fields setelah filtering
+                if model == 'product.template':
+                    print(f"Updated fields AFTER filtering: {list(updated_fields.keys())}")
+                    if 'list_price' in updated_fields:
+                        print(f"✓ list_price STILL in updated_fields: {updated_fields['list_price']}")
+                    else:
+                        print(f"✗ list_price REMOVED from updated_fields")
 
                 if updated_fields: 
                     valid_record = self.validate_record_data_update(updated_fields, model, [record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
                     if valid_record:
                         record_id = target_record.get('id')
+                        
+                        # DEBUG: Log sebelum update
+                        if model == 'product.template':
+                            print(f"Calling update_data with fields: {list(valid_record.keys())}")
+                            if 'list_price' in valid_record:
+                                print(f"✓ list_price will be updated to: {valid_record['list_price']}")
+                        
                         data_for_update = self.update_data(model, record_id, valid_record, modul, record, last_master_url, target_record)
                 else:
                     id_for_update_index_store = record.get('id')
+                    if model == 'product.template':
+                        print(f"No fields to update for product: {record.get('name')}")
                     
             return data_for_update, id_for_update_index_store
+            
         except Exception as e:
             self.set_log_mc.create_log_note_failed(f"Exception - {model}", f"{model} from {self.source_client.server_name} to {self.target_client.server_name}", f"Error occurred while processing record: {e}", None)
             self.set_log_ss.create_log_note_failed(f"Exception - {model}", model, f"Error occurred while processing record: {e}", None)
-        
+            return None, None
      
     # to get string value for many2one, many2many data type
     def validate_record_data(self, record, model, data_list, type_fields, relation_fields, dict_relation_source, dict_relation_target):
@@ -661,13 +787,29 @@ class DataIntegrator:
                 relation_model = relation_fields[field_name]
 
                 if field_metadata == 'many2one' and isinstance(field_value, list):
-                    field_data = field_value[1] if field_value else False
+                    if model == 'purchase.order' and field_name == 'partner_id':
+                        field_data_id = field_value[0] if field_value else False
+                        field_datas = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                            self.source_client.uid, self.source_client.password,
+                                            'res.partner', 'search_read',
+                                            [[('id', '=', field_data_id)]], {'fields': ['customer_code']})
+                        field_data = field_datas and field_datas[0].get('customer_code', False)
+                    else:
+                        field_data = field_value[1] if field_value else False
+                        if model == 'purchase.order' and field_name == 'picking_type_id':
+                            field_data = field_data.split(': ')[1]
                 elif field_metadata == 'many2many' and isinstance(field_value, list):
                     name_datas_source = dict_relation_source.get(relation_model, [])
-                    field_data = [
-                        next((item['name'] for item in name_datas_source if item['id'] == data), None)
+                    if model == 'product.tag':
+                        field_data = [
+                        next((item['default_code'] for item in name_datas_source if item['id'] == data), None)
                         for data in field_value
-                    ]
+                        ]
+                    else:
+                        field_data = [
+                            next((item['name'] for item in name_datas_source if item['id'] == data), None)
+                            for data in field_value
+                        ]
                 elif field_metadata == 'one2many':
                     continue
                     
@@ -686,6 +828,10 @@ class DataIntegrator:
                         parts = field_data.split(":")
                         picking_type = parts[1].strip()
                         field_data = picking_type
+                    elif model == 'multiple.barcode':
+                        match = re.search(r'\[(.*?)\]', field_data)
+                        if match:
+                            field_data = match.group(1)
                     
                     if model == 'stock.picking.type' and field_name in ('default_location_src_id', 'default_location_dest_id'):
                         datas = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
@@ -887,10 +1033,16 @@ class DataIntegrator:
                         field_data = field_value[1] if field_value else False
                     elif field_metadata == 'many2many' and isinstance(field_value, list):
                         name_datas_source = dict_relation_source.get(relation_model, [])
-                        field_data = [
-                            next((item['name'] for item in name_datas_source if item['id'] == data), None)
+                        if model == 'product.tag':
+                            field_data = [
+                            next((item['default_code'] for item in name_datas_source if item['id'] == data), None)
                             for data in field_value
-                        ]
+                            ]
+                        else:
+                            field_data = [
+                                next((item['name'] for item in name_datas_source if item['id'] == data), None)
+                                for data in field_value
+                            ]
                     elif field_metadata == 'one2many':
                         continue
                         
@@ -902,10 +1054,13 @@ class DataIntegrator:
                             if pattern:
                                 match = re.search(pattern, field_data)
                                 field_data = match.group(1)
-                        if relation_model == 'account.account':
+                        elif relation_model == 'account.account':
                             parts = field_data.split() # Menggunakan split untuk memisahkan string
                             field_data = parts[0] # Mengambil bagian pertama yang merupakan angka
-                        
+                        elif model == 'multiple.barcode':
+                            match = re.search(r'\[(.*?)\]', field_data)
+                            if match:
+                                field_data = match.group(1)
                         
                         if model == 'stock.picking.type' and field_name in ('default_location_src_id', 'default_location_dest_id'):
                             datas = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
@@ -1085,6 +1240,11 @@ class DataIntegrator:
                     
                     if (field_metadata == 'many2one') and isinstance(field_value, list):
                         field_data = field_value[1] if field_value else False
+                        if model == 'purchase.order.line' and field_name == 'product_id':
+                            # result = re.search(r'\[(.*?)\]', field_data) didalam siku
+                            result = re.search(r'\] (.*)', field_data)
+                            if result:
+                                field_data = result.group(1)  # Output: 8997207960317 from [...]
                     elif (field_metadata == 'many2many') and isinstance(field_value, list):
                         field_data_list = []
                         for field_data in field_value:
@@ -1124,9 +1284,9 @@ class DataIntegrator:
                                     if datas_target_notyet_result is not None:
                                         datas_target_result.append(datas_target_notyet_result)
                                     else:
-                                        write_date = record['write_date']
-                                        self.set_log_mc.create_log_note_failed(record, model, f"{field_uniq} {field_data} in {relation_model} not exist", write_date)
-                                        self.set_log_ss.create_log_note_failed(record, model, f"{field_uniq} {field_data} in {relation_model} not exist", write_date)
+                                        # write_date = record['write_date']
+                                        self.set_log_mc.create_log_note_failed(record, model, f"{field_uniq} {field_data} in {relation_model} not exist", None)
+                                        self.set_log_ss.create_log_note_failed(record, model, f"{field_uniq} {field_data} in {relation_model} not exist", None)
                             
                             # datas = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                             #                     self.target_client.uid, self.target_client.password,
@@ -1509,8 +1669,8 @@ class DataIntegrator:
                                                     self.target_client.password, 'loyalty.program', 'search_read', [[]], {'fields': ['currency_id'], 'limit': 1})
                 currency_id = currency[0]['currency_id'][0]
                 data_list = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                                                    self.target_client.password, model, 'search_read', [[['code','=', '044d-ab69-4a4a'], ['currency_id','=', currency_id], ['is_integrated', '=', True], [field_uniq, '!=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
-                                                    {'fields': fields, 'limit': 1}) # ['code','=', '044d-ab69-4a4a']
+                                                    self.target_client.password, model, 'search_read', [[['currency_id','=', currency_id], ['is_integrated', '=', True], [field_uniq, '!=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
+                                                    {'fields': fields}) # ['code','=', '044d-ab69-4a4a']
             elif model == 'res.partner.title':
                 data_list = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
                                                     self.target_client.password, model, 'search_read', [[[field_uniq, '!=', False], ['write_date', '>=', date_from], ['write_date', '<=', date_to]]],
@@ -1866,6 +2026,8 @@ class SetLogMC:
                 key = record.get('code')
             elif record.get('complete_name'):
                 key = record.get('complete_name')
+            elif record.get('vit_trxid'):
+                key = record.get('vit_trxid')
             else:
                 key = record.get('name')
 
@@ -2007,6 +2169,8 @@ class SetLogSS:
                 key = record.get('code')
             elif record.get('complete_name'):
                 key = record.get('complete_name')
+            elif record.get('vit_trxid'):
+                key = record.get('vit_trxid')
             else:
                 key = record.get('name')
 

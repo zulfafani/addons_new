@@ -15,6 +15,9 @@ class ResPartner(models.Model):
 
     @api.model
     def create(self, vals):
+        # if not vals.get('phone'):
+        #     raise ValidationError(_("Field 'Phone' is required. Please fill in the phone number."))
+        
         if not vals.get('customer_code'):
             name = vals.get('name')
             mobile = vals.get('mobile')
@@ -41,6 +44,14 @@ class ResPartner(models.Model):
         return super(ResPartner, self).create(vals)
     
     def write(self, vals):
+        # if 'phone' in vals and not vals['phone']:
+        #     raise ValidationError(_("Field 'Phone' is required. Please fill in the phone number."))
+
+        # # atau jika phone belum diisi di record dan tidak dikirim via vals
+        # for partner in self:
+        #     if not partner.phone and 'phone' not in vals:
+        #         raise ValidationError(_("Field 'Phone' is required. Please fill in the phone number."))
+            
         if 'id_mc' not in vals:
             if 'is_integrated' in vals and vals['is_integrated'] == False:
                 vals['is_integrated'] = False
