@@ -1,0 +1,14 @@
+{
+  "api": {
+    "baseURL": "http://pos-mc.visi-intech.com",
+    "authorization": "03df61505b28cce167036aac80ab16e5cdc51a3165a11cc1246e09db6c163a53",
+    "timeout": 10000,
+    "serverName": "MC"
+  },
+  "services": {
+    "drawerService": "http://localhost:3001",
+    "poleDisplay": "ws://localhost:8765",
+    "printService": "http://localhost:3001"
+  },
+  "environment": "production"
+}

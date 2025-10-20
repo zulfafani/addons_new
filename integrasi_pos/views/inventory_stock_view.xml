@@ -41,50 +41,48 @@
             <form>
                 <header>
                     <button name="action_start_counting" string="Finish Counting" type="object" 
-                            class="oe_highlight" invisible="state in ('draft', 'counted')"/>
+                            class="oe_highlight" invisible="state in ('draft', 'counted', 'closed')"/>
                     <button name="action_in_progress" string="In Progress" type="object" 
-                            class="oe_highlight" invisible="state in ('in_progress')"/>
+                            class="oe_highlight" invisible="state in ('in_progress', 'counted', 'closed')"/>
+                    <button name="action_closed" string="Closed" type="object" 
+                            class="oe_highlight" invisible="state in ('draft', 'in_progress', 'closed')"/>
                     <button name="open_barcode_scanner" string="📷 Scan" type="object"
-                            class="oe_highlight" invisible="state in ('counted')"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,counted"/>
+                            class="oe_highlight" invisible="state in ('counted', 'closed')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,in_progress,counted,closed"/>
                 </header>
                 <sheet>
-                <!-- <div class="oe_button_box" name="button_box">
-                    <button name="action_view_inventory_counting" type="object" class="oe_stat_button" icon="fa-book">
-                        <field name="inventory_count" widget="statinfo" string="Count"/>
-                    </button>
-                </div> -->
                 <div class="oe_title">
                     <h1>
-                        <field name="doc_num" readonly="state in ('draft', 'in_progress', 'counted')"/>
+                        <field name="doc_num" readonly="1"/>
                     </h1>
                 </div>
                     <group>
                         <group>
-                            <field name="warehouse_id" readonly="state in ('counted')"/>
-                            <field name="location_id" readonly="state in ('counted')"/>
-                            <field name="inventory_date" readonly="state in ('counted')"/>
+                            <field name="warehouse_id" readonly="state in ('counted', 'closed')"/>
+                            <field name="location_id" readonly="state in ('counted', 'closed')"/>
+                            <field name="inventory_date" readonly="state != 'draft'"/>
                             <field name="is_integrated"/>
                         </group>
                         <group>
-                            <field name="company_id" readonly="state in ('counted')"/>
-                            <field name="create_date" readonly="state in ('counted')"/>
-                            <field name="barcode_input" default_focus="1"/>
+                            <field name="company_id" readonly="state in ('counted', 'closed')"/>
+                            <field name="create_date" readonly="1"/>
+                            <field name="vit_notes"/>
+                            <field name="barcode_input" default_focus="1" invisible="state in ('counted', 'closed')"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Inventory Counting Lines">
                             <field name="inventory_counting_ids">
                             <tree editable="bottom" export="1">
-                                <field name="product_id" readonly="state in ('counted')"/>
-                                <field name="location_id" readonly="state in ('counted')"/>
-                                <field name="lot_id" readonly="state in ('counted')"/>
-                                <field name="inventory_date" readonly="state in ('counted')"/>
-                                <field name="qty_hand" readonly="state in('draft', 'in_progress', 'counted')"  invisible="state in ('draft', 'in_progress')"/>
-                                <field name="counted_qty" readonly="state in ('counted')"/>
+                                <field name="product_id" readonly="state in ('counted', 'closed')"/>
+                                <field name="location_id" readonly="state in ('counted', 'closed')" optional="hide"/>
+                                <field name="lot_id" readonly="state in ('counted', 'closed')" optional="hide"/>
+                                <field name="inventory_date" readonly="state in ('counted', 'closed')" optional="hide"/>
+                                <field name="qty_hand" readonly="1" invisible="state in ('draft', 'in_progress')"/>
+                                <field name="counted_qty" readonly="state in ('counted', 'closed')"/>
                                 <field name="difference_qty" invisible="state in ('draft', 'in_progress')"/>
-                                <field name="uom_id" readonly="state in ('counted')"/>
-                                <field name="state"/>
+                                <field name="uom_id" readonly="state in ('counted', 'closed')"/>
+                                <field name="state" optional="hide"/>
                             </tree>
                             </field>
                         </page>

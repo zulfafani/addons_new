@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <!-- TEMPLATE BARU: ProductCard dalam format LIST VERTIKAL -->
+    <t t-name="point_of_sale.ProductCardList">
+        <article 
+            tabindex="0" 
+            t-attf-class="{{props.class}} product-list-item position-relative btn btn-light d-flex flex-column align-items-center justify-content-center p-3 m-0 text-center cursor-pointer transition-base w-100" 
+            t-on-keypress="(event) => event.code === 'Space' ? props.onClick(event) : ()=>{}"
+            t-on-click="props.onClick" 
+            t-att-data-product-id="props.productId" 
+            t-attf-aria-labelledby="article_product_{{props.productId}}">
+            
+            <!-- PRODUCT INFO ICON (pojok kanan atas) -->
+            <div t-if="props.productInfo" 
+                class="product-information-icon-corner" 
+                t-on-click.stop="props.onProductInfoClick">
+                <i class="fa fa-info-circle text-muted" 
+                    role="img" 
+                    aria-label="Product Information" 
+                    title="Product Information" />
+            </div>
+            
+            <!-- BARIS 1: SKU -->
+            <div class="product-list-sku-row mb-2" t-if="this.productSKU">
+                <span class="product-list-sku text-primary fw-bold">
+                    <t t-esc="this.productSKU" />
+                </span>
+            </div>
+            
+            <!-- BARIS 2: NAMA PRODUK -->
+            <div class="product-list-name-row mb-2">
+                <span class="product-list-name fw-bolder" 
+                    t-attf-id="article_product_{{props.productId}}">
+                    <t t-esc="props.name" />
+                </span>
+            </div>
+            
+            <!-- BARIS 3: HARGA -->
+            <div class="product-list-price-row" t-if="props.price">
+                <span class="price-tag text-primary fw-bolder fs-5"
+                    t-esc="props.price" />
+            </div>
+            
+        </article>
+    </t>
+    
+</templates>

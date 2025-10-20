@@ -1,35 +1,39 @@
 <odoo>
   <data>
 
-    <record model="ir.ui.view" id="view_res_partner_form">
-      <field name="name">res.partner.form</field>
+    <record model="ir.ui.view" id="view_res_partner_form_inherit">
+      <field name="name">res.partner.form.inherit</field>
       <field name="model">res.partner</field>
       <field name="inherit_id" ref="base.view_partner_form"/>
       <field name="arch" type="xml">
+        <!-- Tambahkan field credit_amount setelah website -->
         <xpath expr="//field[@name='website']" position="after">
             <field name="credit_amount"/>
         </xpath>
+        
+        <!-- Tambahkan field custom setelah category_id -->
         <xpath expr="//field[@name='category_id']" position="after">
-            <field name="customer_code"/>
-            <field name="is_integrated"/>
-            <field name="id_mc"/>
+            <field name="customer_code" readonly="1"/>
+            <field name="vit_customer_group"/>
+            <field name="is_integrated" readonly="1"/>
+            <field name="is_store"/>
+            <field name="id_mc" readonly="1"/>
         </xpath>
+        
+        <!-- Tambahkan field credit limit setelah property_account_receivable_id -->
         <xpath expr="//field[@name='property_account_receivable_id']" position="after">
           <field name="active_credit"/>
           <field name="warn_amount"/>
           <field name="block_amount"/>
         </xpath>
-        <xpath expr="//field[@name='is_integrated']" position="attributes">
+        
+        <!-- Set tracking untuk phone dan category_id agar log ke chatter -->
+        <xpath expr="//field[@name='phone']" position="attributes">
           <attribute name="force_save">1</attribute>
-          <attribute name="readonly">True</attribute>
         </xpath>
-        <!-- <xpath expr="//field[@name='customer_code']" position="attributes">
+        
+        <xpath expr="//field[@name='category_id']" position="attributes">
           <attribute name="force_save">1</attribute>
-          <attribute name="readonly">True</attribute>
-        </xpath> -->
-        <xpath expr="//field[@name='id_mc']" position="attributes">
-          <attribute name="force_save">1</attribute>
-          <attribute name="readonly">True</attribute>
         </xpath>
       </field>
     </record>

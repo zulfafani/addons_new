@@ -40,6 +40,13 @@
                 </field>
             </page>
         </xpath>
+        <xpath expr="//page[@name='rules_rewards']" position="after">
+            <page string="Redeem Point" name="redeem" invisible="program_type != 'loyalty'">
+                <group>
+                    <field name="vit_konversi_poin"/>
+                </group>
+            </page>
+        </xpath>
 
         <!-- readonly handling -->
         <xpath expr="//field[@name='is_integrated']" position="attributes">

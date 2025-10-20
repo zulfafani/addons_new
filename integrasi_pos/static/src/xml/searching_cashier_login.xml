@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="point_of_sale.SelectionPopup" t-inherit="point_of_sale.SelectionPopup" t-inherit-mode="extension">
+        <!-- Add search field before the selection list -->
+        <xpath expr="//div[@class='selection btn-group-vertical justify-content-start w-100 p-3 overflow-y-auto']" position="before">
+            <t t-if="showSearchField">
+                <div class="cashier-search-container p-3 pt-0">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            class="form-control cashier-search-input" 
+                            placeholder="Search cashier..."
+                            t-att-value="searchState.searchQuery"
+                            t-on-input="onSearchInput"
+                        />
+                        <button 
+                            class="btn btn-secondary" 
+                            t-if="searchState.searchQuery"
+                            t-on-click="clearSearch"
+                            type="button"
+                        >
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+
+        <!-- Replace the list iteration to use filteredList -->
+        <xpath expr="//div[@class='selection btn-group-vertical justify-content-start w-100 p-3 overflow-y-auto']" position="replace">
+            <div class="selection btn-group-vertical justify-content-start w-100 p-3 overflow-y-auto">
+                <t t-foreach="filteredList" t-as="item" t-key="item.id">
+                    <button type="button" class="selection-item d-flex align-items-center justify-content-between btn btn-lg btn-outline-secondary w-100 p-3 text-start" t-att-class="{ 'selected active': item.isSelected }"
+                            t-on-click="() => this.selectItem(item.id)">
+                        <div class="d-flex flex-column">
+                            <span t-esc="item.label" />
+                            <span t-esc="item.description" t-if="item.description" />
+                        </div>
+                        <i class="oi oi-chevron-right"></i>
+                    </button>
+                </t>
+                <!-- Empty state when no results found -->
+                <t t-if="showSearchField and filteredList.length === 0">
+                    <div class="text-center text-muted py-5">
+                        <i class="fa fa-search fa-3x mb-3 opacity-25"></i>
+                        <div class="fs-5">No cashier found</div>
+                        <div class="small">Try a different search term</div>
+                    </div>
+                </t>
+            </div>
+        </xpath>
+    </t>
+</templates>

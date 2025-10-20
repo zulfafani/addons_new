@@ -13,6 +13,7 @@
             <field name="vit_trxid"/>
             <field name="vit_pos_store"/>
             <field name="is_integrated"/>
+            <field name="is_printed"/>
             <field name="id_mc"/>
         </xpath>
         <xpath expr="//field[@name='is_integrated']" position="attributes">

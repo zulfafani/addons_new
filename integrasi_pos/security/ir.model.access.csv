@@ -5,6 +5,7 @@ access_manual_sync,access_manual.sync,model_manual_sync,base.group_user,1,1,1,1
 access_pos_cashier_log,access_pos.cashier.log,model_pos_cashier_log,base.group_user,1,1,1,1
 access_end_shift,access_end.shift,model_end_shift,base.group_user,1,1,1,1
 access_end_shift_line,access_end.shift.line,model_end_shift_line,base.group_user,1,1,1,1
+access_end_shift_notes_wizard,access_end.shift.notes.wizard,model_end_shift_notes_wizard,base.group_user,1,1,1,1
 access_inventory_counting,access_inventory.counting,model_inventory_counting,base.group_user,1,1,1,1
 access_inventory_stock,access_inventory.stock,model_inventory_stock,base.group_user,1,1,1,1
 access_transfer_request,access_transfer.request,model_transfer_request,base.group_user,1,1,1,1
@@ -20,3 +21,5 @@ access_loyalty_history,access_loyalty.history,model_loyalty_history,base.group_u
 access_loyalty_member,access_loyalty.member,model_loyalty_member,base.group_user,1,1,1,1
 access_loyalty_program_schedule,access_loyalty.program.schedule,model_loyalty_program_schedule,base.group_user,1,1,1,1
 access_wizard_generate_stock_ledger,access_wizard.generate.stock.ledger,model_wizard_generate_stock_ledger,base.group_user,1,1,1,1
+access_end_shift_line_pin_wizard,access_end.shift.line.pin.wizard,model_end_shift_line_pin_wizard,base.group_user,1,1,1,1
+access_customer_group,access_customer.group,model_customer_group,base.group_user,1,1,1,1

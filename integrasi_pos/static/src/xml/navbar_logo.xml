@@ -1,15 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--Template for adding the image that set from the config-->
+<!--Template for adding both POS config image and company logo in navbar-->
 <templates id="point_of_sale.template" xml:space="preserve">
-        <t t-name="point_of_sale_logo.Navbar" t-inherit="point_of_sale.Navbar"
-           t-inherit-mode="extension" owl="1">
-            <xpath expr="//div[hasclass('pos-branding')]/img"
-                   position="replace">
-                <t t-log="this"/>
-                <img class="pos-logo h-75 ms-3 me-auto align-self-center"
-                     t-on-click="() => debug.toggleWidget()"
-                     t-if="pos.config.image"
-                     t-attf-src="/web/image?model=pos.config&amp;field=image&amp;id={{ pos.config.id }}"/>
-            </xpath>
-        </t>
+    <t t-name="point_of_sale_logo.Navbar" t-inherit="point_of_sale.Navbar"
+       t-inherit-mode="extension" owl="1">
+        <xpath expr="//div[hasclass('pos-branding')]"
+               position="replace">
+            <div class="pos-branding d-flex align-items-center gap-3 ms-3">
+                <!-- POS Config Logo (dari pos.config.image) -->
+                <div class="pos-config-logo-container" t-if="pos.config.image">
+                    <img class="pos-config-logo"
+                         t-on-click="() => debug.toggleWidget()"
+                         t-attf-src="/web/image?model=pos.config&amp;field=image&amp;id={{ pos.config.id }}"
+                         alt="POS Logo"
+                         style="height: 45px; max-width: 120px; object-fit: contain; cursor: pointer;"/>
+                </div>
+                
+                <!-- Separator - Garis Vertikal -->
+                <div t-if="pos.config.image and pos.company.logo" 
+                     class="border-start border-2 border-secondary" 
+                     style="height: 40px;"/>
+                
+                <!-- Company Logo (dari pos.company.logo) -->
+                <div class="company-logo-container" t-if="pos.company.logo">
+                    <img class="company-logo"
+                         t-att-src="'data:image/png;base64,' + pos.company.logo"
+                         alt="Company Logo"
+                         style="height: 45px; max-width: 120px; object-fit: contain;"/>
+                </div>
+                
+                <!-- Fallback: Jika tidak ada logo sama sekali -->
+                <div t-if="!pos.config.image and !pos.company.logo" 
+                     class="d-flex align-items-center gap-2">
+                    <i class="fa fa-building-o fa-2x text-primary"/>
+                    <span class="fw-bold text-primary" t-esc="pos.company.name"/>
+                </div>
+            </div>
+        </xpath>
+    </t>
 </templates>

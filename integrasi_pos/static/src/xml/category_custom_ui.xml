@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <!-- TEMPLATE BARU: ProductsWidget tanpa CategorySelector -->
+    <t t-name="point_of_sale.ProductsWidgetNoCategory" t-inherit="point_of_sale.ProductsWidget" t-inherit-mode="extension">
+        
+        <!-- HAPUS CategorySelector dan buat Search Box Full Width -->
+        <xpath expr="//div[hasclass('products-widget-control')]" position="replace">
+            <div class="products-widget-control-fullwidth d-flex bg-view shadow-sm">
+                <!-- Hanya Input Search - Full Width - TANPA ICON -->
+                <Input 
+                    tModel="[pos, 'searchProductWord']"
+                    class="'search-input-fullwidth'"
+                    isSmall="ui.isSmall"
+                    placeholder="'Search products...'" />
+            </div>
+        </xpath>
+        
+    </t>
+    
+</templates>

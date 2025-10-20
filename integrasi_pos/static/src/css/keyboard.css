@@ -1,201 +1,564 @@
-.popup-numeric-keyboard {
-    min-width: 400px;
-    max-width: 500px;
+/* ============================================
+   CUSTOM NUMPAD POPUP - COMPACT NO SCROLL
+   ============================================ */
+
+/* Main popup container - CENTERED */
+.popup.popup-numeric-keyboard.custom-numpad-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999 !important;
+    pointer-events: all;
 }
 
-.popup-numeric-keyboard .popup-body {
-    padding: 30px;
-    text-align: center;
+/* Dark overlay background */
+.popup-numeric-keyboard .popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1;
+    animation: fadeIn 0.2s ease-in-out;
 }
 
-.popup-numeric-keyboard .popup-title {
-    margin-bottom: 25px;
-    font-size: 24px;
-    font-weight: bold;
-    color: #2c3e50;
+/* Content wrapper - CENTERED */
+.popup-numeric-keyboard .popup-content-wrapper {
+    position: relative;
+    z-index: 2;
+    max-width: 380px;
+    width: 90%;
+    animation: slideUp 0.3s ease-out;
+    margin: 0 auto;
 }
 
-/* Input Display */
-.input-display {
-    margin-bottom: 25px;
-}
-
-.input-field {
-    background: #f8f9fa;
-    border: 3px solid #dee2e6;
+/* Main popup content - NO SCROLL */
+.popup-numeric-keyboard .popup-content {
+    background: white;
     border-radius: 12px;
-    padding: 20px;
-    font-size: 36px;
-    font-weight: bold;
-    letter-spacing: 8px;
+    padding: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-height: none !important;
+    overflow: visible !important;
     text-align: center;
-    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Title styling - COMPACT */
+.popup-numeric-keyboard .popup-title {
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.popup-numeric-keyboard .popup-title h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* Body text - COMPACT */
+.popup-numeric-keyboard .popup-body {
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.popup-numeric-keyboard .popup-body p {
+    margin: 0;
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* Input field container - COMPACT */
+.popup-numeric-keyboard .input-container {
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.popup-numeric-keyboard .input-field {
+    background: white;
+    border: 2px solid #2c6f73;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 20px;
+    text-align: center;
+    min-height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    font-weight: 600;
+    letter-spacing: 2px;
+    width: 100%;
+    color: #2c3e50;
 }
 
-.input-field.error {
+.popup-numeric-keyboard .input-field:focus-within,
+.popup-numeric-keyboard .input-field:hover {
+    border-color: #236165;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(44, 111, 115, 0.15);
+}
+
+.popup-numeric-keyboard .input-field.error {
     border-color: #dc3545;
-    background: #f8d7da;
+    background: #fff5f5;
 }
 
-.input-field .placeholder {
-    color: #6c757d;
-    opacity: 0.7;
-}
-
-.error-message {
-    color: #dc3545;
+.popup-numeric-keyboard .input-field .placeholder {
+    color: #adb5bd;
+    font-weight: 400;
+    letter-spacing: 1px;
     font-size: 16px;
-    margin-top: 10px;
-    font-weight: 500;
 }
 
-/* Numeric Keyboard */
-.numeric-keyboard {
+.popup-numeric-keyboard .input-field .input-text {
+    color: #2c3e50;
+}
+
+/* Error message - COMPACT */
+.popup-numeric-keyboard .error-message {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* Numpad Grid - COMPACT 3 columns */
+.popup-numeric-keyboard .numpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Numpad buttons - COMPACT */
+.popup-numeric-keyboard .numpad-btn {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    font-size: 20px;
+    background: white;
+    border: 2px solid #2c6f73;
+    color: #2c6f73;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    box-shadow: none;
+    padding: 0;
+    margin: 0 auto;
+}
+
+.popup-numeric-keyboard .numpad-btn:hover {
+    background: #2c6f73;
+    color: white;
+    transform: scale(1.05);
+    border-color: #2c6f73;
+    box-shadow: none;
+}
+
+.popup-numeric-keyboard .numpad-btn:active {
+    transform: scale(0.95);
+    box-shadow: none;
+    background: #236165;
+    color: white;
+}
+
+/* Clear button - CIRCULAR & COMPACT */
+.popup-numeric-keyboard .numpad-btn.btn-clear {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #333;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 50%;
+    width: 62px;
+    height: 62px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-bottom: 30px;
-}
-
-.keyboard-row {
-    display: flex;
-    gap: 15px;
+    align-items: center;
     justify-content: center;
+    line-height: 1.1;
 }
 
-.key-btn {
-    width: 80px;
-    height: 80px;
-    border: none;
-    border-radius: 12px;
-    font-size: 24px;
-    font-weight: bold;
+.popup-numeric-keyboard .numpad-btn.btn-clear:hover {
+    background: #ffb300;
+    border-color: #ffb300;
+    color: #333;
+}
+
+.popup-numeric-keyboard .numpad-btn.btn-clear i {
+    margin-right: 0;
+    margin-bottom: 2px;
+    font-size: 0.75rem;
+}
+
+/* Action buttons container - COMPACT */
+.popup-numeric-keyboard .button-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 0;
+    gap: 8px;
+}
+
+/* Primary and Secondary buttons - COMPACT */
+.popup-numeric-keyboard .btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
+    margin: 0;
+    padding: 0;
+    border: none;
+    text-transform: none;
+    letter-spacing: normal;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    user-select: none;
-    -webkit-user-select: none;
 }
 
-.key-btn.number {
-    background: #007cba;
+.popup-numeric-keyboard .btn-primary {
+    background: #2c6f73;
     color: white;
+    box-shadow: none;
 }
 
-.key-btn.number:hover {
-    background: #0056b3;
-    transform: scale(1.05);
-}
-
-.key-btn.number:active {
-    transform: scale(0.95);
-    background: #004085;
-}
-
-.key-btn.action {
-    background: #6c757d;
+.popup-numeric-keyboard .btn-primary:hover {
+    background: #236165;
     color: white;
-    font-size: 16px;
-}
-
-.key-btn.action:hover {
-    background: #545b62;
-    transform: scale(1.05);
-}
-
-.key-btn.action:active {
-    transform: scale(0.95);
-    background: #495057;
-}
-
-.key-btn.clear {
-    background: #dc3545;
-}
-
-.key-btn.clear:hover {
-    background: #c82333;
-}
-
-.key-btn.zero {
-    width: 170px;
-}
-
-/* Action Buttons */
-.popup-actions {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-}
-
-.popup-actions .btn {
-    min-width: 120px;
-    height: 50px;
-    font-size: 18px;
-    font-weight: bold;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.cancel-btn {
-    background: #6c757d;
-    color: white;
-}
-
-.cancel-btn:hover {
-    background: #545b62;
+    box-shadow: 0 3px 10px rgba(44, 111, 115, 0.3);
     transform: translateY(-2px);
 }
 
-.confirm-btn {
-    background: #28a745;
-    color: white;
-}
-
-.confirm-btn:hover {
-    background: #218838;
-    transform: translateY(-2px);
-}
-
-.popup-actions .btn:active {
+.popup-numeric-keyboard .btn-primary:active {
     transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(44, 111, 115, 0.3);
+    background: #1a4d50;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-    .popup-numeric-keyboard {
-        min-width: 90vw;
-        max-width: 95vw;
+.popup-numeric-keyboard .btn-secondary {
+    background: white;
+    color: #2c6f73;
+    border: 2px solid #2c6f73 !important;
+    box-shadow: none;
+}
+
+.popup-numeric-keyboard .btn-secondary:hover {
+    background: #2c6f73;
+    color: white;
+    box-shadow: 0 3px 10px rgba(44, 111, 115, 0.25);
+    transform: translateY(-2px);
+}
+
+.popup-numeric-keyboard .btn-secondary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(44, 111, 115, 0.25);
+    background: #236165;
+    color: white;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
-    
-    .key-btn {
-        width: 70px;
-        height: 70px;
-        font-size: 20px;
-    }
-    
-    .key-btn.zero {
-        width: 155px;
-    }
-    
-    .input-field {
-        font-size: 28px;
-        letter-spacing: 6px;
-        min-height: 70px;
+    to {
+        opacity: 1;
     }
 }
 
-/* Touch feedback */
-@media (hover: none) and (pointer: coarse) {
-    .key-btn:active {
-        background: #0056b3 !important;
-        transform: scale(0.9);
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Tablet & Mobile - Landscape */
+@media (max-width: 768px) {
+    .popup-numeric-keyboard .popup-content-wrapper {
+        width: 92%;
+        max-width: 340px;
+    }
+
+    .popup-numeric-keyboard .popup-content {
+        padding: 14px;
+        border-radius: 10px;
+    }
+
+    .popup-numeric-keyboard .popup-title h3 {
+        font-size: 0.95rem;
+    }
+
+    .popup-numeric-keyboard .popup-body p {
+        font-size: 0.8rem;
+    }
+
+    .popup-numeric-keyboard .input-field {
+        font-size: 18px;
+        padding: 10px;
+        min-height: 42px;
+    }
+
+    .popup-numeric-keyboard .numpad-grid {
+        gap: 8px;
+        max-width: 230px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 18px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear {
+        width: 56px;
+        height: 56px;
+        font-size: 0.65rem;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear i {
+        font-size: 0.7rem;
+    }
+
+    .popup-numeric-keyboard .btn {
+        height: 42px;
+        font-size: 0.85rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .popup-numeric-keyboard .popup-content-wrapper {
+        width: 94%;
+        max-width: 320px;
+    }
+
+    .popup-numeric-keyboard .popup-content {
+        padding: 12px;
+    }
+
+    .popup-numeric-keyboard .popup-title {
+        margin-bottom: 8px;
+    }
+
+    .popup-numeric-keyboard .popup-title h3 {
+        font-size: 0.9rem;
+    }
+
+    .popup-numeric-keyboard .popup-body {
+        margin-bottom: 8px;
+    }
+
+    .popup-numeric-keyboard .popup-body p {
+        font-size: 0.75rem;
+    }
+
+    .popup-numeric-keyboard .input-container {
+        margin-bottom: 8px;
+    }
+
+    .popup-numeric-keyboard .input-field {
+        font-size: 17px;
+        letter-spacing: 1.5px;
+        min-height: 40px;
+    }
+
+    .popup-numeric-keyboard .numpad-grid {
+        gap: 7px;
+        margin-bottom: 8px;
+        max-width: 210px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 17px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear {
+        width: 52px;
+        height: 52px;
+        font-size: 0.6rem;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear i {
+        font-size: 0.65rem;
+        margin-bottom: 1px;
+    }
+
+    .popup-numeric-keyboard .button-container {
+        gap: 6px;
+    }
+
+    .popup-numeric-keyboard .btn {
+        height: 40px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Extra Small Devices */
+@media (max-width: 360px) {
+    .popup-numeric-keyboard .popup-content-wrapper {
+        width: 95%;
+        max-width: 300px;
+    }
+
+    .popup-numeric-keyboard .popup-content {
+        padding: 10px;
+    }
+
+    .popup-numeric-keyboard .popup-title h3 {
+        font-size: 0.85rem;
+    }
+
+    .popup-numeric-keyboard .numpad-grid {
+        gap: 6px;
+        max-width: 195px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 16px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear {
+        width: 48px;
+        height: 48px;
+        font-size: 0.55rem;
+    }
+}
+
+/* Landscape Mode - Special handling */
+@media (max-height: 650px) and (orientation: landscape) {
+    .popup-numeric-keyboard .popup-content-wrapper {
+        max-width: 340px;
+    }
+
+    .popup-numeric-keyboard .popup-content {
+        padding: 10px;
+    }
+
+    .popup-numeric-keyboard .popup-title {
+        margin-bottom: 6px;
+    }
+
+    .popup-numeric-keyboard .popup-title h3 {
+        font-size: 0.88rem;
+    }
+
+    .popup-numeric-keyboard .popup-body {
+        margin-bottom: 6px;
+    }
+
+    .popup-numeric-keyboard .popup-body p {
+        font-size: 0.72rem;
+    }
+
+    .popup-numeric-keyboard .input-container {
+        margin-bottom: 6px;
+    }
+
+    .popup-numeric-keyboard .input-field {
+        min-height: 38px;
+        font-size: 17px;
+        padding: 8px 10px;
+    }
+
+    .popup-numeric-keyboard .numpad-grid {
+        gap: 6px;
+        margin-bottom: 6px;
+        max-width: 210px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 17px;
+    }
+
+    .popup-numeric-keyboard .numpad-btn.btn-clear {
+        width: 50px;
+        height: 50px;
+        font-size: 0.58rem;
+    }
+
+    .popup-numeric-keyboard .btn {
+        height: 38px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Override any conflicting styles */
+.popup-numeric-keyboard * {
+    box-sizing: border-box;
+}
+
+/* Ensure popup stays on top of everything */
+.o_main_content .popup-numeric-keyboard,
+.pos-content .popup-numeric-keyboard,
+.point-of-sale .popup-numeric-keyboard {
+    z-index: 99999 !important;
+}
+
+/* Prevent body scroll when popup is open */
+body:has(.popup-numeric-keyboard) {
+    overflow: hidden;
+}
+
+/* Force center positioning */
+.popup.popup-numeric-keyboard {
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    transform: none !important;
+}
+
+/* Remove margins from utility classes */
+.popup-numeric-keyboard .mb-3,
+.popup-numeric-keyboard .mb-4 {
+    margin-bottom: 10px !important;
+}
+
+.popup-numeric-keyboard .mt-2 {
+    margin-top: 6px !important;
+}
+
+.popup-numeric-keyboard .gap-3 {
+    gap: 8px !important;
 }

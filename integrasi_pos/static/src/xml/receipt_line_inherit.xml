@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-  <!-- Inherit template and remove "Units" before 'x' -->
+  <!-- Inherit template and modify -->
   <t t-inherit="point_of_sale.Orderline" t-inherit-mode="extension" owl="1">
 
     <!-- Hapus kata 'Units' sebelum 'x' -->
     <xpath expr="//li[contains(@class, 'price-per-unit')]/t[t-esc='line.unit']" position="replace">
-      <!-- Dikosongkan, jadi 'Units' tidak tampil -->
+      <!-- Dikosongkan -->
+    </xpath>
+
+    <!-- Perbaiki agar productName tidak turun ke bawah -->
+    <xpath expr="//span[@t-esc='line.productName']" position="attributes">
+      <attribute name="class">text-truncate</attribute>
+      <attribute name="t-att-title">line.productName</attribute>
     </xpath>
 
   </t>

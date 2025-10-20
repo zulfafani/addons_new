@@ -16,7 +16,10 @@
         'point_of_sale._assets_pos': [
             # 'integrasi_pos_loyalty/static/src/xml/reward_button_custom.xml',
             # 'integrasi_pos_loyalty/static/src/xml/reward_popup.xml',
+            'integrasi_pos_loyalty/static/src/xml/loyalty_default_customer.xml',
             'integrasi_pos_loyalty/static/src/overrides/models/reward_pos_override.js',
+            'integrasi_pos_loyalty/static/src/overrides/models/loyalty_default_customer.js',
+            'integrasi_pos_loyalty/static/src/overrides/models/coupon_fix.js',
         ],
     },
     'installable': True,

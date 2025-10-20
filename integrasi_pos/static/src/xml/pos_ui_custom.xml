@@ -6,6 +6,9 @@
             <!-- ==================== KOLOM 1: CONTROL PANEL (KIRI) ==================== -->
             <div class="leftpane" 
                 t-att-class="{ 'mobile-active': pos.mobile_pane === 'control' }">
+                
+                <!-- COMPANY LOGO SECTION DIHAPUS - DIPINDAH KE NAVBAR -->
+                
                 <div class="pads">
                     <!-- Control Buttons Grid -->
                     <div class="control-buttons">
@@ -13,6 +16,38 @@
                             <t t-component="cb.component" t-key="cb.name" class="'control-btn-item'"/>
                         </t>
                     </div>
+                    
+                    <!-- LOYALTY POINTS SECTION -->
+                    <t t-set="_loyaltyPoints" t-value="pos.get_order()?.getLoyaltyPoints() or []" />
+                    <t t-set="_currentPartner" t-value="pos.get_order()?.get_partner()" />
+                    
+                    <t t-if="_currentPartner and (_loyaltyPoints.length > 0 or _currentPartner.is_store)">
+                        <t t-foreach="_loyaltyPoints" t-as="_loyaltyStat" t-key="_loyaltyStat.couponId">
+                            <div t-if="_currentPartner.is_store or _loyaltyStat.points.won or _loyaltyStat.points.spent" 
+                                class="loyalty-section">
+                                <div t-esc="_loyaltyStat.points.name" class="loyalty-points-title" />
+                                <div class="loyalty-points-grid">
+                                    <div class="loyalty-points-balance">
+                                        <span class="text-muted">Balance</span>
+                                        <span class='value'><t t-esc='_loyaltyStat.points.balance'/></span>
+                                    </div>
+                                    <div class="loyalty-points-won">
+                                        <span class="text-muted">Won</span>
+                                        <span class='value'>+<t t-esc='_loyaltyStat.points.won'/></span>
+                                    </div>
+                                    <div t-if='_loyaltyStat.points.spent' 
+                                        class="loyalty-points-spent">
+                                        <span class="text-muted">Spent</span>
+                                        <span class='value'>-<t t-esc='_loyaltyStat.points.spent'/></span>
+                                    </div>
+                                    <div class="loyalty-points-total">
+                                        <span class="text-muted">Total</span>
+                                        <span class='value'><t t-esc='_loyaltyStat.points.total'/></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
                     
                     <!-- Numpad + Action Pad -->
                     <div class="subpads">
@@ -30,17 +65,23 @@
                 </div>
             </div>
 
-            <!-- ==================== KOLOM 2: PRODUCT LIST (TENGAH) ==================== -->
+            <!-- ==================== KOLOM 2: PRODUCTS (TENGAH) ==================== -->
             <div class="centerpane" 
                 t-att-class="{ 'mobile-active': pos.mobile_pane === 'products' }">
                 <ProductsWidget class="'flex-grow-1'" />
             </div>
 
-            <!-- ==================== KOLOM 3: ORDER LIST (KANAN) ==================== -->
+            <!-- ==================== KOLOM 3: ORDER LIST (KANAN) DENGAN HEADER ==================== -->
             <div class="rightpane" 
                 t-att-class="{ 'mobile-active': pos.mobile_pane === 'order' }">
                 
-                <!-- OrderWidget dengan Loyalty Points -->
+                <!-- 🛒 ORDER LIST HEADER - BARU DITAMBAHKAN! -->
+                <div class="order-list-header">
+                    <i class="fa fa-shopping-cart order-list-icon"></i>
+                    <span class="order-list-title">Shopping Cart</span>
+                </div>
+                
+                <!-- ORDER WIDGET - Existing, tetap sama -->
                 <OrderWidget 
                     class="'flex-grow-1 d-flex flex-column overflow-hidden'"
                     lines="currentOrder.orderlines" 
@@ -68,46 +109,14 @@
                             </li>
                         </ul>
                         
-                        <!-- Gift Card / E-Wallet Balance -->
                         <li t-if="line.isGiftCardOrEWalletReward()">
                             Current Balance: <t t-esc="line.getGiftCardOrEWalletBalance()"/>
                         </li>
                     </Orderline>
-                    
-                    <!-- LOYALTY POINTS SECTION -->
-                    <t t-set-slot="details">
-                        <t t-foreach="pos.get_order()?.getLoyaltyPoints() or []" t-as="_loyaltyStat" t-key="_loyaltyStat.couponId">
-                            <div t-if="_loyaltyStat.points.won || _loyaltyStat.points.spent" 
-                                class="loyalty-section w-100 border-top mt-auto fw-bolder d-flex flex-column">
-                                <div t-esc="_loyaltyStat.points.name" class="loyalty-points-title" />
-                                <div class="loyalty-points-grid">
-                                    <div t-if='_loyaltyStat.points.balance' 
-                                        class="loyalty-points-balance">
-                                        <span class="text-muted">Balance</span>
-                                        <span class='value'><t t-esc='_loyaltyStat.points.balance'/></span>
-                                    </div>
-                                    <div t-if='_loyaltyStat.points.won' 
-                                        class="loyalty-points-won">
-                                        <span class="text-muted">Won</span>
-                                        <span class='value'>+<t t-esc='_loyaltyStat.points.won'/></span>
-                                    </div>
-                                    <div t-if='_loyaltyStat.points.spent' 
-                                        class="loyalty-points-spent">
-                                        <span class="text-muted">Spent</span>
-                                        <span class='value'>-<t t-esc='_loyaltyStat.points.spent'/></span>
-                                    </div>
-                                    <div class="loyalty-points-total">
-                                        <span class="text-muted">Total</span>
-                                        <span class='value'><t t-esc='_loyaltyStat.points.total'/></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </t>
-                    </t>
                 </OrderWidget>
             </div>
 
-            <!-- ==================== MOBILE NAVIGATION TABS ==================== -->
+            <!-- Mobile Navigation Tabs -->
             <div class="mobile-nav-tabs d-md-none" t-if="ui.isSmall">
                 <button 
                     t-on-click="() => this.setMobilePane('control')"

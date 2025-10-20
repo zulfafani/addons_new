@@ -1,20 +1,27 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<templates xml:space="preserve">
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
     <t t-name="point_of_sale.ClosePosPopup" t-inherit="point_of_sale.ClosePosPopup" t-inherit-mode="extension">
 
-        <!-- Tambahkan kolom Expected kembali -->
-        <xpath expr="//tr[@class='text-dark']" position="before">
+        <!-- ✅ HILANGKAN SELURUH SECTION CASH OVERVIEW -->
+        <!-- Ini akan menghilangkan: Opening, Cash in/out, Payments, Cash difference, dll -->
+        <xpath expr="//tbody[@class='cash-overview border-start small text-muted']" position="replace">
+            <!-- Tidak ada konten - semua cash moves disembunyikan -->
+        </xpath>
+
+        <!-- ✅ TAMBAHKAN KOLOM EXPECTED -->
+        <xpath expr="//thead/tr[@class='text-dark']/th[1]" position="after">
             <th>Expected</th>
         </xpath>
 
-        <!-- Cash row -->
-        <xpath expr="//tr[td[@t-esc='props.default_cash_details.name']]" position="before">
+        <!-- ✅ TAMBAHKAN EXPECTED VALUE UNTUK CASH ROW -->
+        <xpath expr="//tbody/tr[td[@t-esc='props.default_cash_details.name']]/td[1]" position="after">
             <td t-esc="env.utils.formatCurrency(state.payments[props.default_cash_details.id]?.expected || 0.0)"/>
         </xpath>
 
-        <!-- Bank rows -->
-        <xpath expr="//tr[@t-foreach='props.other_payment_methods']" position="before">
+        <!-- ✅ TAMBAHKAN EXPECTED VALUE UNTUK BANK ROWS -->
+        <xpath expr="//tbody/tr[@t-foreach='props.other_payment_methods']/td[1]" position="after">
             <td t-esc="env.utils.formatCurrency(state.payments[pm.id]?.expected || 0.0)"/>
         </xpath>
+
     </t>
 </templates>

@@ -1,39 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
     
-    <!-- Custom Salesperson Popup Template -->
+    <!-- Custom Salesperson Popup Template - Enhanced -->
     <t t-name="CustomSalesPersonPopup">
         <div class="custom-popup-overlay" t-on-click="cancel">
             <div class="custom-popup-container" t-on-click.stop="">
-                <!-- Header -->
+                
+                <!-- Header with gradient accent -->
                 <div class="custom-popup-header">
                     <h2 class="custom-popup-title">
                         <i class="fa fa-user-circle"/>
-                        <t t-esc="props.title"/>
+                        <t t-esc="props.title || 'Select Salesperson'"/>
                     </h2>
-                    <button class="custom-popup-close" t-on-click="cancel">
+                    <button class="custom-popup-close" t-on-click="cancel" title="Close">
                         <i class="fa fa-times"/>
                     </button>
                 </div>
 
-                <!-- Search Bar -->
+                <!-- Search Bar with icon -->
                 <div class="custom-popup-search">
                     <i class="fa fa-search search-icon"/>
                     <input 
                         type="text" 
                         class="search-input" 
-                        placeholder="Search salesperson..."
+                        placeholder="Search salesperson by name..."
                         t-on-input="onSearchInput"
                         t-att-value="state.searchQuery"
+                        autocomplete="off"
+                        autofocus="autofocus"
                     />
                 </div>
 
-                <!-- List -->
+                <!-- Scrollable List -->
                 <div class="custom-popup-list">
                     <t t-if="filteredList.length === 0">
                         <div class="empty-state">
                             <i class="fa fa-inbox"/>
                             <p>No salesperson found</p>
+                            <small style="color: #bdc3c7; margin-top: 8px; font-size: 14px;">
+                                Try searching with different keywords
+                            </small>
                         </div>
                     </t>
                     <t t-else="">
@@ -58,31 +64,37 @@
                     </t>
                 </div>
 
-                <!-- Footer -->
+                <!-- Footer with action buttons -->
                 <div class="custom-popup-footer">
                     <button class="btn-cancel" t-on-click="cancel">
-                        <i class="fa fa-times"/>
-                        Cancel
+                        <i class="fa fa-times-circle"/>
+                        <span>Cancel</span>
                     </button>
                     <button 
                         class="btn-confirm" 
                         t-on-click="confirm"
                         t-att-disabled="!state.selectedId"
                     >
-                        <i class="fa fa-check"/>
-                        Confirm
+                        <i class="fa fa-check-circle"/>
+                        <span>Confirm Selection</span>
                     </button>
                 </div>
             </div>
         </div>
     </t>
 
-    <!-- Button Template - Matching POS Style -->
+    <!-- Button Template - Matching POS Style with Enhancement -->
     <t t-name="SalesPersonButton">
-        <div class="control-button o_pricelist_button btn btn-light rounded-0 fw-bolder"
-             t-on-click="onClick">
-            <i class="fa fa-user-plus me-1" role="img" aria-label="Set Salesperson"/>
-            Set Salesperson
+        <div class="control-button o_pricelist_button btn btn-light rounded-0 fw-bolder salesperson-trigger-btn"
+             t-on-click="onClick"
+             title="Select salesperson for this order">
+            <i class="fa fa-user-plus me-2" role="img" aria-label="Set Salesperson"/>
+            <span>Set Salesperson</span>
+            <t t-if="props.selectedName">
+                <small class="ms-2 text-muted" style="font-weight: 400;">
+                    (<t t-esc="props.selectedName"/>)
+                </small>
+            </t>
         </div>
     </t>
 

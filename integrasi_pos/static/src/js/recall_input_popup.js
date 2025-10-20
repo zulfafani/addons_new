@@ -12,15 +12,49 @@ export class RecallNumberPopup extends AbstractAwaitablePopup {
         super.setup();
         this.popup = useService("popup");
         this.inputRef = useRef("input");
-        this.state = useState({ input: "" });
+        this.state = useState({ 
+            input: "",
+            orders: this.props.orders || [] // Terima data orders dari parent
+        });
 
         this.appendNumber = this.appendNumber.bind(this);
         this.removeLast = this.removeLast.bind(this);
         this.clearAll = this.clearAll.bind(this);
+        this.deleteOrder = this.deleteOrder.bind(this);
 
         onMounted(() => this.inputRef.el?.focus());
     }
 
+    async deleteOrder(index) {
+        const order = this.state.orders[index];
+        const confirmed = window.confirm(
+            `⚠️ Yakin ingin menghapus transaksi?\n\nCatatan: ${order.notes}\nJumlah item: ${order.data.lines.length}`
+        );
+
+        if (confirmed) {
+            // Hapus dari array
+            this.state.orders.splice(index, 1);
+            
+            // Notifikasi ke parent untuk update storage
+            if (this.props.onDelete) {
+                this.props.onDelete(index);
+            }
+
+            await this.popup.add(ErrorPopup, {
+                title: "✅ Transaksi Dihapus",
+                body: `Transaksi dengan catatan "${order.notes}" telah dihapus.`,
+            });
+
+            // Jika tidak ada order lagi, tutup popup
+            if (this.state.orders.length === 0) {
+                await this.popup.add(ErrorPopup, {
+                    title: "ℹ️ Tidak Ada Transaksi",
+                    body: "Semua transaksi telah dihapus.",
+                });
+                this.cancel();
+            }
+        }
+    }
 
     confirm() {
         const input = this.state.input.trim();
@@ -30,6 +64,14 @@ export class RecallNumberPopup extends AbstractAwaitablePopup {
             this.popup.add(ErrorPopup, {
                 title: "❌ Input Tidak Valid",
                 body: "Harap masukkan nomor yang benar.",
+            });
+            return;
+        }
+
+        if (number < 1 || number > this.state.orders.length) {
+            this.popup.add(ErrorPopup, {
+                title: "❌ Nomor Tidak Valid",
+                body: `Harap masukkan nomor antara 1 hingga ${this.state.orders.length}.`,
             });
             return;
         }

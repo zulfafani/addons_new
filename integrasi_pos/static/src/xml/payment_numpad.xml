@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Custom Numpad Template -->
+    <t t-name="integrasi_pos.CustomNumpad">
+        <div class="custom-numpad d-flex flex-column h-100">
+            <t t-foreach="buttons" t-as="row" t-key="row_index">
+                <div class="numpad-row d-flex flex-row" t-att-class="'row-' + row_index">
+                    <t t-foreach="row" t-as="button" t-key="button_index">
+                        <button 
+                            t-att-class="'numpad-button btn flex-fill m-1 ' + (button.class || '') + ' btn-' + button.type"
+                            t-on-click="() => this.onClick(button.value)"
+                            t-esc="button.text" />
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

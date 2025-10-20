@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    
+    <!-- ==================== PATCH: ADD ORDER LIST HEADER ==================== -->
+    <t t-name="point_of_sale.OrderWidgetWithHeader" t-inherit="point_of_sale.OrderWidget" t-inherit-mode="extension">
+        
+        <!-- Tambahkan Header "Order List" di atas orderlines -->
+        <xpath expr="//div[hasclass('orderlines-container')]" position="before">
+            <div class="order-list-header">
+                <i class="fa fa-shopping-cart order-list-icon"></i>
+                <span class="order-list-title">Order List</span>
+            </div>
+        </xpath>
+        
+    </t>
+    
+</templates>

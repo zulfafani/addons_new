@@ -21,6 +21,8 @@ class POSIntegration(models.Model):
         help='Location source from delivery picking (complete name)'
     )
 
+    is_printed = fields.Boolean(string="Printed", default=False, readonly=True, tracking=True)
+
     def _create_order_picking(self):
         """
         Override method untuk menambahkan logic save location_id ke vit_pos_store

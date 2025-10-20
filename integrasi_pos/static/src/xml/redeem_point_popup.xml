@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="integrasi_pos.RedeemPointPopUp" owl="1">
+        <div class="popup popup-number custom-numpad-popup redeem-point-popup">
+            <header class="title">
+                <h4>Redeem Loyalty Points</h4>
+                <t t-if="props.partnerName">
+                    <p class="text-muted mb-0">Customer: <t t-esc="props.partnerName"/></p>
+                </t>
+            </header>
+            <main class="body">
+                <!-- Balance & Conversion Info - Compact -->
+                <div class="mb-0">
+                    <div class="alert alert-info">
+                        <div class="info-row">
+                            <strong>Available Points:</strong>
+                            <span t-if="state.loading">Loading...</span>
+                            <span t-else="" class="text-success">
+                                <t t-esc="state.availablePoints"/> pts
+                            </span>
+                        </div>
+                        <div class="info-row" t-if="!state.loading and state.conversionRate > 0">
+                            <strong>Conversion Rate:</strong>
+                            <span class="text-primary">
+                                1 pt = <t t-esc="env.utils.formatCurrency(state.conversionRate)"/>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Points -->
+                <div class="input-container">
+                    <input
+                        type="text"
+                        t-att-value="state.inputValue"
+                        t-on-input="handleTyping"
+                        t-ref="discountInput"
+                        placeholder="Enter Points"
+                        class="form-control form-control-lg text-center"
+                        readonly="readonly"
+                    />
+                </div>
+
+                <!-- Estimated Discount Preview -->
+                <div class="mb-0" t-if="state.inputValue and !state.loading">
+                    <div class="discount-preview">
+                        <div class="discount-label">Est. Discount:</div>
+                        <div class="discount-amount">
+                            <t t-esc="env.utils.formatCurrency(estimatedDiscount)"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Numpad -->
+                <div class="numpad-grid">
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('1')">1</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('2')">2</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('3')">3</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('4')">4</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('5')">5</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('6')">6</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('7')">7</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('8')">8</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('9')">9</button>
+                    <button class="btn btn-warning" t-on-click="clearInput">C</button>
+                    <button class="btn btn-light" t-on-click="() => this.addNumber('0')">0</button>
+                    <button class="btn btn-warning" t-on-click="removeLastChar">⌫</button>
+                </div>
+
+                <!-- Action Buttons - Horizontal Side by Side -->
+                <div class="button-container">
+                    <button class="btn btn-success confirm" 
+                            t-on-click="confirmInput"
+                            t-att-disabled="state.loading || !state.inputValue">
+                        <i class="fa fa-check"></i>Redeem
+                    </button>
+                    <button class="btn btn-secondary cancel" t-on-click="cancel">
+                        <i class="fa fa-times"></i>Cancel
+                    </button>
+                </div>
+            </main>
+        </div>
+    </t>
+
+    <t t-name="RedeemPointButton" owl="1">
+        <div class="control-button redeem-point-btn btn btn-light rounded-0 fw-bolder" t-on-click="onClick">
+            <i class="fa fa-gift me-1"></i>
+            <span t-esc="label"/>
+        </div>
+    </t>
+</templates>

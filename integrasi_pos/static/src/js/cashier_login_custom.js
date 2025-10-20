@@ -6,6 +6,34 @@ import { useService } from "@web/core/utils/hooks";
 import { usePos } from "@point_of_sale/app/store/pos_hook";
 import { _t } from "@web/core/l10n/translation";
 import { PopUpSuccesError } from "./pop_up_error";
+import { PosStore } from "@point_of_sale/app/store/pos_store";
+
+patch(PosStore.prototype, {
+    async setup() {
+        // ✅ Panggil super.setup() terlebih dahulu
+        await super.setup(...arguments);
+        
+        // ✅ Setelah setup selesai, baru reset cashier
+        if (this.config && this.config.module_pos_hr) {
+            // Hapus data kasir dari sessionStorage secara manual
+            const cashierKey = `connected_cashier_${this.config.id}`;
+            sessionStorage.removeItem(cashierKey);
+            
+            // Reset cashier data (method ini sudah tersedia dari parent)
+            if (typeof this.reset_cashier === 'function') {
+                this.reset_cashier();
+            }
+            
+            // Set status login ke false
+            this.hasLoggedIn = false;
+            
+            // Paksa tampilkan LoginScreen
+            if (typeof this.showTempScreen === 'function') {
+                this.showTempScreen("LoginScreen");
+            }
+        }
+    },
+});
 
 const originalSetup = SelectionPopup.prototype.setup;
 const originalSelectItem = SelectionPopup.prototype.selectItem;

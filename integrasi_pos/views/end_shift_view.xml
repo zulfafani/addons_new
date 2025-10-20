@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
     <!-- tree view -->
@@ -16,6 +17,32 @@
           <field name="is_integrated" string="Integrated"/>
           <field name="state" string="Status" widget="badge"/>
         </tree>
+      </field>
+    </record>
+
+    <!-- form view untuk end.shift.line (pop-up saat klik row di tree) -->
+    <record id="view_end_shift_line_form" model="ir.ui.view">
+      <field name="name">end.shift.line.form</field>
+      <field name="model">end.shift.line</field>
+      <field name="arch" type="xml">
+        <form string="Shift Line">
+          <sheet>
+            <group>
+              <group>
+                <field name="payment_date" readonly="1"/>
+                <field name="payment_method_id" readonly="1"/>
+                <field name="expected_amount" readonly="1"/>
+              </group>
+              <group>
+                <!-- ✅ Amount selalu bisa diedit, validasi PIN di write() -->
+                <field name="amount"/>
+                <field name="amount_difference" readonly="1"/>
+                <field name="state" invisible="1"/>
+                <field name="temp_amount" invisible="1"/>
+              </group>
+            </group>
+          </sheet>
+        </form>
       </field>
     </record>
 
@@ -42,27 +69,43 @@
             </div>
             <group>
               <group string="End Of Shift">
-                <field name="doc_num"/>   
-                <field name="cashier_id" readonly="state in ('finished')"/>   
-                <field name="session_id" readonly="state in ('finished')"/>    
-                <field name="start_date" readonly="state in ('finished')"/>    
-                <field name="end_date" readonly="state in ('finished')"/> 
-                <field name="modal" readonly="state in ('finished')"/> 
-                <field name="is_integrated" string="Integrated"/>                  
+                <field name="doc_num" readonly="1"/>   
+                <field name="cashier_id" readonly="1"/>   
+                <field name="session_id" readonly="1"/>    
+                <field name="start_date" readonly="1"/>    
+                <field name="end_date" readonly="1"/> 
+                <field name="modal"/> 
+                <field name="is_integrated" string="Integrated" readonly="1"/>                  
               </group>
             </group>
             <notebook>
               <page string="Shift Lines">
-                <field name="line_ids" context="{'parent_state': state}">
-                  <tree editable="bottom">
-                    <field name="payment_date" width="20%" readonly="1"/>
-                    <field name="payment_method_id" width="20%" readonly="1"/>
-                    <field name="amount" width="20%"/>
-                    <field name="expected_amount" width="20%" readonly="1"/>
-                    <field name="amount_difference" width="20%" readonly="1"/>
+                <field name="line_ids" context="{'parent_state': state, 'tree_view_ref': 'integrasi_pos.view_end_shift_line_tree'}">
+                  <tree editable="bottom" create="0" delete="0" decoration-danger="amount != expected_amount">
+                    <field name="payment_date" readonly="1"/>
+                    <field name="payment_method_id" readonly="1"/>
+                    <!-- ✅ FIXED: Amount selalu bisa diedit di tree, validasi PIN di write() -->
+                    <field name="amount" force_save="1" readonly="parent.state == 'finished'"/>
+                    <!-- ✅ Expected amount hanya visible di state 'finished' -->
+                    <field name="expected_amount" readonly="1" column_invisible="parent.state in ('opened', 'in_progress', 'closed')"/>
+                    <field name="amount_difference" readonly="1" column_invisible="parent.state in ('opened', 'in_progress', 'closed')"/>
+                    <!-- ✅ Tombol Update untuk convenience saat state finished -->
+                    <button name="action_open_pin_wizard" 
+                      string="Update with PIN" 
+                      type="object" 
+                      icon="fa-lock"
+                      invisible="parent.state != 'finished' or session_state == 'closed'"
+                      class="btn-warning"/>
                     <field name="state" column_invisible="1"/>
+                    <field name="temp_amount" column_invisible="1"/>
+                    <field name="session_state" column_invisible="1"/>
+                    <field name="end_shift_id" column_invisible="1"/>
                   </tree>
                 </field>
+              </page>
+              <!-- ✅ Page untuk Notes - MANDATORY -->
+              <page string="Notes">
+                  <field name="vit_notes" nolabel="1" placeholder="Add your notes here..." options="{'resizable': true}" invisible="state not in 'finished'" readonly="state == 'finished'"/>
               </page>
             </notebook>
           </sheet>
@@ -75,11 +118,98 @@
       </field>
     </record>
 
+    <record id="view_end_shift_line_pin_wizard_form" model="ir.ui.view">
+      <field name="name">end.shift.line.pin.wizard.form</field>
+      <field name="model">end.shift.line.pin.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Manager PIN Validation">
+          <sheet>
+            <div class="alert alert-warning" role="alert">
+              <strong>⚠️ Manager Approval Required</strong>
+              <p>This shift is in <strong>Finished</strong> state. Manager PIN is required to modify amount.</p>
+            </div>
+            <group>
+              <group>
+                <field name="end_shift_line_id" invisible="1"/>
+                <field name="payment_method" string="Payment Method"/>
+                <field name="current_amount" widget="monetary"/>
+              </group>
+              <group>
+                <field name="amount" widget="monetary" placeholder="Enter new amount"/>
+                <field name="manager_pin" password="True" placeholder="Enter Manager PIN"/>
+              </group>
+            </group>
+          </sheet>
+          <footer>
+            <button name="action_validate_pin" string="Validate &amp; Save" type="object" class="btn-primary"/>
+            <button string="Cancel" class="btn-secondary" special="cancel"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <!-- Action untuk Wizard -->
+    <record model="ir.actions.act_window" id="action_end_shift_line_pin_wizard">
+      <field name="name">Manager PIN Validation</field>
+      <field name="res_model">end.shift.line.pin.wizard</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+      <field name="context">{'dialog_size': 'small'}</field>
+    </record>
+
     <!-- actions opening views on models -->
     <record model="ir.actions.act_window" id="action_end_shift_session">
       <field name="name">End Shift Session Cashier</field>
       <field name="res_model">end.shift</field>
       <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Form view untuk Wizard Catatan Selisih -->
+    <record id="view_end_shift_notes_wizard_form" model="ir.ui.view">
+      <field name="name">end.shift.notes.wizard.form</field>
+      <field name="model">end.shift.notes.wizard</field>
+      <field name="arch" type="xml">
+        <form string="Catatan Diperlukan">
+          <sheet>
+            <div class="alert alert-warning" role="alert">
+              <h4><i class="fa fa-exclamation-triangle"/> Terdapat Selisih Jumlah (Minus)</h4>
+              <p>Metode pembayaran berikut memiliki selisih jumlah (kurang dari seharusnya):</p>
+              <field name="lines_info" readonly="1" nolabel="1" 
+                    style="font-weight: bold; color: #d9534f; margin: 10px 0;"/>
+              <p><strong>Silakan isi catatan yang menjelaskan alasan terjadinya selisih sebelum menyelesaikan shift ini.</strong></p>
+            </div>
+
+            <field name="end_shift_id" invisible="1"/>
+            <field name="vit_notes" 
+                  string="Catatan"
+                  nolabel="1" 
+                  placeholder="Contoh: Uang tunai kurang karena selisih hitung kasir, kesalahan pembulatan, dll..."
+                  required="1"
+                  options="{'resizable': true}"
+                  style="min-height: 150px;"/>
+
+            <div class="alert alert-info" role="alert" style="margin-top: 15px;">
+              <i class="fa fa-info-circle"/> <strong>Catatan:</strong> Catatan ini akan disimpan dan ditampilkan pada data shift sebagai bukti audit.
+            </div>
+          </sheet>
+          <footer>
+            <button name="action_confirm_and_finish" 
+                    string="Simpan Catatan &amp; Selesaikan Shift" 
+                    type="object" 
+                    class="btn-primary"/>
+            <button string="Batal" class="btn-secondary" special="cancel"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+
+    <!-- Action untuk Wizard -->
+    <record model="ir.actions.act_window" id="action_end_shift_notes_wizard">
+      <field name="name">Notes Required</field>
+      <field name="res_model">end.shift.notes.wizard</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
     </record>
 
     <!-- Child Menu -->

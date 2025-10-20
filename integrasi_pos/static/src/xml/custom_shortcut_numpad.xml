@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- ✅ CUSTOM TEMPLATE: Payment Screen dengan Shortcut Buttons -->
+    <t t-name="integrasi_pos.PaymentScreen" t-inherit="point_of_sale.PaymentScreen" t-inherit-mode="extension">
+        <!-- Override center-content untuk menambahkan shortcut buttons -->
+        <xpath expr="//div[hasclass('center-content')]" position="replace">
+            <div class="center-content d-flex flex-column w-50 p-1 border-start border-end bg-300">
+                <PaymentScreenStatus order="currentOrder" />
+                
+                <!-- ✅ SHORTCUT BUTTONS (DI ATAS NUMPAD) -->
+                <div class="shortcut-buttons-container mb-2 px-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button class="btn btn-lg w-100 py-4 fw-bold shortcut-btn-1"
+                                    style="background-color: #6f42c1; color: white; border: none; border-radius: 8px; font-size: 1rem;"
+                                    t-on-click="() => this.onShortcutClick(this.getShortcutAmounts()[0])">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fa fa-money mb-2" style="font-size: 1.5rem;"></i>
+                                    <span t-esc="formatShortcutLabel(getShortcutAmounts()[0])"></span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-lg w-100 py-4 fw-bold shortcut-btn-2"
+                                    style="background-color: #6f42c1; color: white; border: none; border-radius: 8px; font-size: 1rem;"
+                                    t-on-click="() => this.onShortcutClick(this.getShortcutAmounts()[1])">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="fa fa-money mb-2" style="font-size: 1.5rem;"></i>
+                                    <span t-esc="formatShortcutLabel(getShortcutAmounts()[1])"></span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NUMPAD STANDARD (TANPA SHORTCUT) -->
+                <Numpad class="'flex-grow-1'" buttons="getNumpadButtons()" />
+            </div>
+        </xpath>
+    </t>
+
+</templates>

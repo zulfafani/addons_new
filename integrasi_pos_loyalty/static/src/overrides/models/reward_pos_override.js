@@ -362,8 +362,21 @@ patch(Order.prototype, {
         
         const rewardLines = this._get_reward_lines();
         for (const line of rewardLines) {
+            // ✅ Skip jika reward_id undefined atau reward tidak ditemukan
+            if (!line.reward_id) {
+                console.warn("⚠️ Reward line without reward_id:", line);
+                continue;
+            }
+            
             const reward = this.pos.reward_by_id?.[line.reward_id];
-            if (!reward || !isMemberRewardAllowed(this, reward)) {
+            if (!reward) {
+                console.warn("⚠️ Reward not found in pos.reward_by_id:", line.reward_id);
+                continue;
+            }
+            
+            // ✅ Hanya remove jika reward tidak memenuhi syarat
+            if (!isMemberRewardAllowed(this, reward)) {
+                console.log("🗑️ Removing invalid reward line:", reward.description);
                 this.orderlines.remove(line);
             }
         }

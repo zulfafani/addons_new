@@ -12,13 +12,32 @@ class MrpProductInherit(models.Model):
     def _check_total_move_qty_equals_product_qty(self):
         for production in self:
             if not production.move_finished_ids:
-                continue  # Lewati jika belum ada move (misalnya saat create)
+                continue
 
             total_move_qty = sum(production.move_finished_ids.mapped('product_uom_qty'))
             if float_compare(total_move_qty, production.product_qty, precision_digits=2) != 0:
                 raise ValidationError(_(
                     "Total finished move quantity (%s) must equal production quantity (%s)."
                 ) % (total_move_qty, production.product_qty))
+
+    def write(self, vals):
+        # Cek jika ada perubahan pada move_raw_ids dan status sudah done
+        if 'move_raw_ids' in vals and any(record.state == 'done' for record in self):
+            # Analisis operasi yang dilakukan pada move_raw_ids
+            move_operations = vals.get('move_raw_ids', [])
+            
+            for operation in move_operations:
+                # (0, 0, values) - CREATE new line
+                # (2, id, 0) - DELETE existing line
+                if operation[0] in (0, 2):
+                    raise UserError(_("Cannot add or delete raw material lines when manufacturing order is in Done state."))
+        
+        return super(MrpProductInherit, self).write(vals)
+
+    @api.model
+    def create(self, vals):
+        # Untuk memastikan consistency, tapi create biasanya tidak masalah
+        return super(MrpProductInherit, self).create(vals)
 
 class MrpBoMInherit(models.Model):
     _inherit = 'mrp.bom'
@@ -34,39 +53,45 @@ class MrpUnbuild(models.Model):
     @api.constrains('unbuild_line_ids', 'product_qty')
     def _check_total_line_qty_matches_unbuild_qty(self):
         for unbuild in self:
-            # Skip validation if lines are empty (e.g. during copy)
             if not unbuild.unbuild_line_ids:
                 continue
 
-            # Total qty check with float precision
             total = sum(unbuild.unbuild_line_ids.mapped('product_uom_qty'))
             if float_compare(total, unbuild.product_qty, precision_digits=2) != 0:
                 raise ValidationError(_(
                     "Total component quantity (%s) must equal the unbuild quantity (%s)."
                 ) % (total, unbuild.product_qty))
 
+    def write(self, vals):
+        # Cek jika ada perubahan pada unbuild_line_ids dan status sudah done
+        if 'unbuild_line_ids' in vals and any(record.state == 'done' for record in self):
+            line_operations = vals.get('unbuild_line_ids', [])
+            
+            for operation in line_operations:
+                # (0, 0, values) - CREATE new line
+                # (2, id, 0) - DELETE existing line
+                if operation[0] in (0, 2):
+                    raise UserError(_("Cannot add or delete unbuild lines when unbuild order is in Done state."))
+        
+        return super(MrpUnbuild, self).write(vals)
+
     @api.onchange('bom_id')
     def _onchange_bom_id(self):
-        """Auto-fill product_id and unbuild_line_ids when BoM is selected"""
         if not self.bom_id:
             self.product_id = False
-            self.unbuild_line_ids = [(5, 0, 0)]  # Clear existing lines
+            self.unbuild_line_ids = [(5, 0, 0)]
             return
 
-        # Set product_id from BoM's product template
         if self.bom_id.product_tmpl_id:
-            # Get the first variant of the product template
             product = self.env['product.product'].search([
                 ('product_tmpl_id', '=', self.bom_id.product_tmpl_id.id)
             ], limit=1)
             if product:
                 self.product_id = product.id
 
-        # Auto-fill unbuild lines with BoM components
         self._fill_unbuild_lines_from_bom()
 
     def _fill_unbuild_lines_from_bom(self):
-        """Fill unbuild lines based on selected BoM"""
         if not self.bom_id:
             return
 
@@ -83,7 +108,6 @@ class MrpUnbuild(models.Model):
 
     @api.onchange('location_id')
     def _onchange_location_id(self):
-        """Update location in all unbuild lines when main location changes"""
         if self.location_id and self.unbuild_line_ids:
             for line in self.unbuild_line_ids:
                 line.location_id = self.location_id.id
@@ -98,7 +122,7 @@ class MrpUnbuild(models.Model):
                 raise UserError(_("You must provide unbuild line components before proceeding."))
 
             for line in unbuild.unbuild_line_ids:
-                final_qty = line.product_uom_qty * unbuild.product_qty
+                final_qty = line.product_uom_qty
                 product = line.product_id
                 product_uom = line.product_uom
 
@@ -109,8 +133,8 @@ class MrpUnbuild(models.Model):
                     'product_uom_qty': final_qty,
                     'product_uom': product_uom.id,
                     'procure_method': 'make_to_stock',
-                    'location_id': virtual_production_location.id,        # 🔁 VIRTUAL PRODUCTION
-                    'location_dest_id': unbuild.location_dest_id.id,      # 🔁 REAL STOCK
+                    'location_id': virtual_production_location.id,
+                    'location_dest_id': unbuild.location_dest_id.id,
                     'warehouse_id': unbuild.location_dest_id.warehouse_id.id,
                     'unbuild_id': unbuild.id,
                     'company_id': unbuild.company_id.id,
@@ -121,16 +145,12 @@ class MrpUnbuild(models.Model):
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        """Legacy method - now BoM selection is preferred"""
         if not self.product_id or self.bom_id:
-            return  # Skip if BoM is already selected
+            return
 
-        # Cari BOM berdasarkan produk
         bom = self.env['mrp.bom'].search([('product_tmpl_id', '=', self.product_id.product_tmpl_id.id)], limit=1)
         if bom:
             self.bom_id = bom.id
-            # Lines akan terisi otomatis melalui _onchange_bom_id
-
 
 class MrpUnbuildLine(models.Model):
     _name = 'mrp.unbuild.line'
@@ -144,6 +164,5 @@ class MrpUnbuildLine(models.Model):
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        """Set default UoM when product is selected"""
         if self.product_id:
             self.product_uom = self.product_id.uom_id.id

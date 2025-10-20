@@ -34,6 +34,7 @@ class LoyaltyProgramInherit(models.Model):
     )
     schedule_ids = fields.One2many('loyalty.program.schedule','program_id',string='Schedules')
     member_ids = fields.One2many('loyalty.member','member_program_id',string='Members')
+    vit_konversi_poin = fields.Float(string="Konversi untuk Penukaran Point 1 Point =")
 
     def _export_for_loyalty_pos(self):
         return {

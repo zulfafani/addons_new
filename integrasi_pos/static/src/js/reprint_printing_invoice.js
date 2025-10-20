@@ -4,8 +4,13 @@ import { patch } from "@web/core/utils/patch";
 import { ReprintReceiptScreen } from "@point_of_sale/app/screens/receipt_screen/reprint_receipt_screen";
 import { useService } from "@web/core/utils/hooks";
 import { ErrorPopup } from "@point_of_sale/app/errors/popups/error_popup";
+import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
 
-// Function to remove circular references and reduce payload size
+// ========== HELPER FUNCTIONS ==========
+
+/**
+ * Function to remove circular references and reduce payload size
+ */
 function getCircularReplacer() {
     const seen = new WeakSet();
     return (key, value) => {
@@ -41,180 +46,267 @@ function getCircularReplacer() {
     };
 }
 
-// Function to extract only essential data for printing - SAFER VERSION
-function extractEssentialReceiptData(orderData) {
-    console.log("🔍 Extracting essential data...");
-    
-    // Use a safer approach to access nested properties
-    function safeGet(obj, path, defaultValue = null) {
-        try {
-            return path.split('.').reduce((current, key) => current?.[key], obj) || defaultValue;
-        } catch (error) {
-            console.warn(`Safe get failed for path ${path}:`, error);
-            return defaultValue;
-        }
-    }
-    
-    // Extract basic order info safely
-    const orderInfo = {
-        name: orderData.name || orderData.pos_reference || 'N/A',
-        date_order: orderData.date_order || orderData.creation_date || new Date().toISOString(),
-        pos_session_id: safeGet(orderData, 'pos_session_id'),
-        user_id: safeGet(orderData, 'user_id'),
-        cashier: safeGet(orderData, 'cashier') || safeGet(orderData, 'employee.name') || 'Administrator'
-    };
-    
-    // Extract company info safely  
-    const companyInfo = {
-        name: safeGet(orderData, 'company.name') || orderData.company_name || 'PT. KEMANG KARSA LESTARI',
-        street: safeGet(orderData, 'company.street') || orderData.company_street || 'JALAN KEMANG RAYA NO. 3',
-        city: safeGet(orderData, 'company.city') || orderData.company_city || 'JAKARTA', 
-        phone: safeGet(orderData, 'company.phone') || orderData.company_phone,
-        email: safeGet(orderData, 'company.email') || orderData.company_email,
-        vat: safeGet(orderData, 'company.vat') || orderData.company_vat,
-        country: safeGet(orderData, 'company.country') || orderData.company_country || 'Indonesia'
-    };
-    
-    // Extract orderlines safely
-    const orderlines = [];
-    if (orderData.orderlines && Array.isArray(orderData.orderlines)) {
-        orderData.orderlines.forEach((line, index) => {
-            try {
-                orderlines.push({
-                    product_name: line.product_name_wrapped || line.display_name || line.product_name || line.full_product_name || `Product ${index + 1}`,
-                    quantity: parseFloat(line.qty || line.quantity || 1),
-                    price_unit: parseFloat(line.price_unit || 0),
-                    price_subtotal: parseFloat(line.price_subtotal || 0),
-                    price_subtotal_incl: parseFloat(line.price_subtotal_incl || 0),
-                    discount: parseFloat(line.discount || 0),
-                    unit_name: line.unit_name || 'Units'
-                });
-            } catch (error) {
-                console.warn(`Error processing orderline ${index}:`, error);
-            }
-        });
-    }
-    
-    // Extract payment lines safely
-    const paymentlines = [];
-    if (orderData.paymentlines && Array.isArray(orderData.paymentlines)) {
-        orderData.paymentlines.forEach((payment, index) => {
-            try {
-                paymentlines.push({
-                    payment_method: {
-                        name: safeGet(payment, 'payment_method.name') || payment.name || `Payment ${index + 1}`
-                    },
-                    amount: parseFloat(payment.amount || 0)
-                });
-            } catch (error) {
-                console.warn(`Error processing payment ${index}:`, error);
-            }
-        });
-    }
-    
-    // Extract totals safely
-    const totals = {
-        total_with_tax: parseFloat(orderData.total_with_tax || orderData.amount_total || 0),
-        total_without_tax: parseFloat(orderData.total_without_tax || orderData.amount_untaxed || 0),  
-        total_tax: parseFloat(orderData.total_tax || orderData.amount_tax || 0),
-        change: parseFloat(orderData.change || orderData.amount_return || 0),
-        total_paid: parseFloat(orderData.total_paid || orderData.amount_paid || 0)
-    };
-    
-    // Extract tax details safely
-    const taxDetails = [];
-    if (orderData.tax_details && Array.isArray(orderData.tax_details)) {
-        orderData.tax_details.forEach((tax, index) => {
-            try {
-                taxDetails.push({
-                    tax: {
-                        amount: parseFloat(safeGet(tax, 'tax.amount') || 11)
-                    },
-                    amount: parseFloat(tax.amount || 0),
-                    base_amount: parseFloat(tax.base_amount || 0)
-                });
-            } catch (error) {
-                console.warn(`Error processing tax detail ${index}:`, error);
-            }
-        });
-    }
-    
-    // Extract loyalty info safely
-    const loyaltyInfo = {
-        points_won: safeGet(orderData, 'loyalty.points_won'),
-        points_total: safeGet(orderData, 'loyalty.points_total'),
-        customer_name: safeGet(orderData, 'partner_id.name') || orderData.customer_name
-    };
-    
-    const result = {
-        order: orderInfo,
-        company: companyInfo,
-        orderlines: orderlines,
-        paymentlines: paymentlines,
-        ...totals,
-        tax_details: taxDetails,
-        loyalty: loyaltyInfo
-    };
-    
-    console.log("✅ Essential data extracted successfully");
-    return result;
-}
+// ========== PATCH REPRINT RECEIPT SCREEN ==========
 
 patch(ReprintReceiptScreen.prototype, {
+    setup() {
+        super.setup();
+        this.orm = useService("orm");
+        this.popup = useService("popup");
+        this.notification = useService("notification");
+        this._rendererService = useService("renderer");
+    },
+
+    /**
+     * ✅ Get selected order from the screen with better validation
+     */
+    getSelectedOrder() {
+        console.log("🔍 Getting selected order...");
+        
+        // Method 1: From props (standard Odoo way)
+        if (this.props?.order) {
+            console.log("📋 Order from props:", this.props.order);
+            return this.props.order;
+        }
+        
+        // Method 2: From current order
+        if (this.currentOrder) {
+            console.log("📋 Order from currentOrder:", this.currentOrder);
+            return this.currentOrder;
+        }
+        
+        // Method 3: From pos.selectedOrder
+        if (this.pos?.selectedOrder) {
+            console.log("📋 Order from pos.selectedOrder:", this.pos.selectedOrder);
+            return this.pos.selectedOrder;
+        }
+        
+        // Method 4: From pos orders (last selected)
+        if (this.pos?.orders && this.pos.orders.length > 0) {
+            const lastOrder = this.pos.orders[this.pos.orders.length - 1];
+            console.log("📋 Order from pos.orders (last):", lastOrder);
+            return lastOrder;
+        }
+        
+        console.warn("⚠️ No order found in any location");
+        return null;
+    },
+
+    /**
+     * ✅ Check if order has is_printed = true
+     * Try multiple methods: local data first, then backend
+     */
+    async checkOrderIsPrinted(order) {
+        console.log("🔍 Checking is_printed status...");
+        
+        // Method 1: Check from local order object
+        if (order.is_printed !== undefined) {
+            console.log(`📋 is_printed from local object: ${order.is_printed}`);
+            return order.is_printed;
+        }
+        
+        // Method 2: Try to get from backend (with error handling)
+        try {
+            const orderId = order.id || order.server_id || order.backendId;
+            
+            if (orderId && typeof orderId === 'number' && orderId > 0) {
+                console.log(`📥 Checking is_printed from backend for order ID: ${orderId}`);
+                
+                const orderData = await this.orm.read(
+                    'pos.order',
+                    [orderId],
+                    ['is_printed']
+                );
+                
+                if (orderData && orderData.length > 0) {
+                    console.log(`✅ is_printed from backend: ${orderData[0].is_printed}`);
+                    return orderData[0].is_printed || false;
+                }
+            }
+        } catch (error) {
+            console.warn("⚠️ Could not check is_printed from backend:", error);
+        }
+        
+        // Method 3: Check if order has been finalized (fallback)
+        if (order.finalized) {
+            console.log("📋 Order is finalized, assuming it was printed");
+            return true;
+        }
+        
+        // Default: assume not printed
+        console.log("📋 Defaulting to is_printed = false");
+        return false;
+    },
+
+    /**
+     * ✅ Get order data for printing (use local export_for_printing)
+     */
+    async getOrderDataForPrinting(order) {
+        console.log("📄 Getting order data for printing...");
+        
+        try {
+            // Method 1: Use export_for_printing if available
+            if (typeof order.export_for_printing === 'function') {
+                console.log("✅ Using order.export_for_printing()");
+                const data = order.export_for_printing();
+                
+                // ✅ IMPORTANT: Override is_printed to true for COPY receipt
+                data.is_printed = true;
+                
+                return data;
+            }
+            
+            // Method 2: Fallback - build data manually from order object
+            console.log("⚠️ export_for_printing not available, building data manually");
+            
+            const orderData = {
+                id: order.id || order.server_id,
+                name: order.name,
+                pos_reference: order.pos_reference,
+                date_order: order.date_order || order.creation_date,
+                is_printed: true, // ✅ Set to true for COPY receipt
+                amount_total: order.get_total_with_tax ? order.get_total_with_tax() : order.amount_total,
+                amount_tax: order.get_total_tax ? order.get_total_tax() : order.amount_tax,
+                amount_paid: order.get_total_paid ? order.get_total_paid() : order.amount_paid,
+                amount_return: order.get_change ? order.get_change() : order.amount_return,
+                partner_id: order.partner_id || order.partner,
+                orderlines: [],
+                paymentlines: []
+            };
+            
+            // Get orderlines
+            if (order.orderlines) {
+                const lines = order.get_orderlines ? order.get_orderlines() : order.orderlines;
+                orderData.orderlines = lines.map(line => {
+                    const displayData = line.getDisplayData ? line.getDisplayData() : line;
+                    return {
+                        productName: displayData.productName || line.get_full_product_name?.() || line.product.display_name,
+                        qty: displayData.qty || line.get_quantity?.() || line.qty,
+                        price: displayData.price || line.get_display_price?.() || line.price_unit,
+                        price_subtotal: displayData.price || (line.get_price_without_tax?.() || line.price_subtotal),
+                        price_subtotal_incl: displayData.priceWithTax || (line.get_price_with_tax?.() || line.price_subtotal_incl),
+                        discount: displayData.discount || line.get_discount?.() || line.discount,
+                        full_product_name: line.get_full_product_name?.() || line.product?.display_name,
+                        customerNote: displayData.customerNote || line.get_customer_note?.() || '',
+                        originalUnitPrice: displayData.originalUnitPrice || displayData.price
+                    };
+                });
+            }
+            
+            // Get paymentlines
+            if (order.paymentlines) {
+                const payments = order.get_paymentlines ? order.get_paymentlines() : order.paymentlines;
+                orderData.paymentlines = payments.map(payment => ({
+                    name: payment.payment_method?.name || payment.name,
+                    amount: payment.amount,
+                    card_number: payment.card_number
+                }));
+            }
+            
+            return orderData;
+            
+        } catch (error) {
+            console.error("❌ Error getting order data:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * ✅ Generate HTML from order data using OrderReceipt component
+     */
+    async generateReceiptHTML(orderData) {
+        try {
+            console.log("📝 Generating receipt HTML...");
+            
+            // Render the OrderReceipt component to HTML
+            const htmlVNode = await this._rendererService.toHtml(OrderReceipt, {
+                data: orderData,
+                formatCurrency: this.env.utils.formatCurrency,
+            });
+            
+            const html = htmlVNode?.outerHTML || "";
+            
+            if (!html) {
+                throw new Error("Failed to generate HTML - empty result");
+            }
+            
+            console.log(`✅ HTML generated successfully (${html.length} characters)`);
+            return html;
+            
+        } catch (error) {
+            console.error("❌ Error generating HTML:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * ✅ MAIN METHOD: Print via localhost (WITH HTML GENERATION)
+     */
     async printViaLocalhost() {
         try {
             console.log("🖨️ Starting localhost print...");
             
-            let requestPayload;
+            // ✅ STEP 1: Get selected order
+            const selectedOrder = this.getSelectedOrder();
             
-            // Option 1: Try to get the HTML content from the receipt (safest method)
-            const receiptElement = document.querySelector('.pos-receipt');
-            if (receiptElement) {
-                console.log("📄 Using HTML content from receipt element");
-                requestPayload = {
-                    html: receiptElement.outerHTML
-                };
-            } else {
-                console.log("📄 Using order data extraction...");
-                
-                // Get the original order data with safe serialization
-                let fullOrderData;
-                try {
-                    fullOrderData = this.props.order.export_for_printing();
-                    console.log("📦 Raw order data extracted successfully");
-                } catch (error) {
-                    console.error("❌ Error getting order data:", error);
-                    throw new Error("Failed to extract order data");
-                }
-                
-                // Extract only essential data to reduce payload size and avoid circular refs
-                const essentialData = extractEssentialReceiptData(fullOrderData);
-                
-                // Test if essential data can be serialized safely
-                let serializedSize;
-                try {
-                    const testSerialization = JSON.stringify(essentialData, getCircularReplacer());
-                    serializedSize = testSerialization.length;
-                    console.log("📦 Essential data size:", serializedSize);
-                } catch (serializeError) {
-                    console.error("❌ Serialization test failed:", serializeError);
-                    throw new Error("Data contains circular references that cannot be resolved");
-                }
-                
-                requestPayload = {
-                    receipt: essentialData
-                };
+            if (!selectedOrder) {
+                await this.popup.add(ErrorPopup, {
+                    title: "Tidak Ada Order Dipilih",
+                    body: "Silakan pilih order dari list yang ingin di-print ulang.",
+                });
+                return;
             }
+            
+            console.log("📋 Selected order:", {
+                name: selectedOrder.name,
+                pos_reference: selectedOrder.pos_reference,
+                finalized: selectedOrder.finalized
+            });
+            
+            // ✅ STEP 2: Check is_printed status
+            const isPrinted = await this.checkOrderIsPrinted(selectedOrder);
+            
+            console.log(`📋 Order is_printed status: ${isPrinted}`);
+            
+            if (!isPrinted) {
+                await this.popup.add(ErrorPopup, {
+                    title: "Order Belum Pernah Di-Print",
+                    body: `Order ${selectedOrder.pos_reference || selectedOrder.name} belum pernah di-print sebelumnya.\n\nHanya order yang sudah di-print yang dapat di-reprint.`,
+                });
+                return;
+            }
+            
+            console.log("✅ Order validation passed, proceeding to print...");
+            
+            // ✅ STEP 3: Get order data for printing (from local object)
+            const orderData = await this.getOrderDataForPrinting(selectedOrder);
+            
+            if (!orderData) {
+                throw new Error("Unable to get order data for printing");
+            }
+            
+            // ✅ STEP 4: Generate HTML from order data
+            const html = await this.generateReceiptHTML(orderData);
+            
+            if (!html || typeof html !== 'string') {
+                throw new Error("Failed to generate valid HTML string");
+            }
+            
+            // ✅ STEP 5: Prepare request payload with HTML
+            const requestPayload = {
+                html: html
+            };
             
             console.log("📤 Sending request to printer server...");
             
+            // ✅ STEP 6: Send to print server
             const response = await fetch("http://localhost:3001/print", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
                     "Accept": "application/json"
                 },
-                body: JSON.stringify(requestPayload, getCircularReplacer()),
+                body: JSON.stringify(requestPayload),
             });
 
             if (!response.ok) {
@@ -225,11 +317,12 @@ patch(ReprintReceiptScreen.prototype, {
             const result = await response.text();
             console.log("✅ Print successful:", result);
             
-            // Show success notification if available
-            if (this.env.services.notification) {
-                this.env.services.notification.add("Receipt printed successfully!", {
-                    type: "success",
-                });
+            // ✅ STEP 7: Show success notification
+            if (this.notification) {
+                this.notification.add(
+                    `Receipt COPY untuk ${orderData.pos_reference || orderData.name} berhasil di-print!`, 
+                    { type: "success" }
+                );
             }
             
         } catch (error) {
@@ -249,14 +342,16 @@ patch(ReprintReceiptScreen.prototype, {
                 errorMessage = error.message;
             }
             
-            await this.env.services.popup.add(ErrorPopup, {
+            await this.popup.add(ErrorPopup, {
                 title: "Print Error",
                 body: errorMessage,
             });
         }
     },
     
-    // Add a method to test the connection
+    /**
+     * Test printer connection
+     */
     async testPrinterConnection() {
         try {
             const response = await fetch("http://localhost:3001/test", {

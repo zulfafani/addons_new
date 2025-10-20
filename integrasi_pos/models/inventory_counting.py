@@ -6,12 +6,20 @@ from odoo.exceptions import ValidationError
 class InventoryAdjustment(models.Model):
     _inherit = 'stock.quant'
 
-    doc_num = fields.Many2one('inventory.stock', string="Inventory Counting")
+    doc_num = fields.Many2one(
+        'inventory.stock', 
+        string="Inventory Counting",
+        domain="[('state', '=', 'closed')]"  # ✅ Filter hanya yang closed
+    )
 
     @api.onchange('doc_num')
     def _onchange_doc_num(self):
         """Auto-fill inventory_quantity ketika doc_num dipilih"""
         if self.doc_num and self.product_id:
+            # ✅ Validasi tambahan: pastikan status closed
+            if self.doc_num.state != 'closed':
+                raise ValidationError("Hanya Inventory Counting dengan status 'Closed' yang bisa dipilih.")
+            
             # Cari line yang match
             inventory_counting_line = self.doc_num.inventory_counting_ids.filtered(
                 lambda line: line.product_id.id == self.product_id.id 
@@ -28,6 +36,13 @@ class InventoryAdjustment(models.Model):
         """Override untuk mengisi inventory_quantity dari doc_num"""
         for quant in self:
             if quant.doc_num:
+                # ✅ Validasi status closed
+                if quant.doc_num.state != 'closed':
+                    raise ValidationError(
+                        f"Inventory Counting '{quant.doc_num.doc_num}' harus berstatus 'Closed' "
+                        "sebelum dapat diaplikasikan."
+                    )
+                
                 inventory_stock = quant.doc_num
                 
                 inventory_counting_line = inventory_stock.inventory_counting_ids.filtered(
@@ -48,11 +63,11 @@ class InventoryStock(models.Model):
     _description = "Inventory Stock"
     _rec_name = 'doc_num'
 
-    doc_num = fields.Char(string="Internal Reference")
+    doc_num = fields.Char(string="Internal Reference", readonly=True)
     warehouse_id = fields.Many2one('stock.warehouse', string="Warehouse")
     location_id = fields.Many2one('stock.location', string="Location")
     company_id = fields.Many2one('res.company', string="Company")
-    create_date = fields.Datetime(string="Created Date")
+    create_date = fields.Datetime(string="Created Date", readonly=True)
     from_date = fields.Datetime(string="From Date")
     to_date = fields.Datetime(string="To Date")
     inventory_date = fields.Datetime(string="Inventory Date")
@@ -61,11 +76,13 @@ class InventoryStock(models.Model):
         ('draft', 'Draft'),
         ('in_progress', 'In Progress'),
         ('counted', 'Counted'),
+        ('closed', 'Closed'),
     ], string='Status', default='draft', required=True, readonly=True, copy=False, tracking=True)
     inventory_counting_ids = fields.One2many('inventory.counting', 'inventory_counting_id', string='Inventory Countings', order='sequence desc, id desc')
 
     barcode_input = fields.Char(string="Scan Barcode", readonly=False)
     is_integrated = fields.Boolean(string="Integrated", default=False, readonly=True, tracking=True)
+    vit_notes = fields.Text(string="Keterangan", readonly=False, tracking=True)
 
     def action_apply_to_stock_quant(self):
         """
@@ -363,6 +380,17 @@ class InventoryStock(models.Model):
             for line in self.inventory_counting_ids:
                 line.location_id = self.location_id
 
+    def write(self, vals):
+        """Override write untuk update create_date saat ada perubahan data (kecuali status draft)"""
+        for record in self:
+            # Update create_date jika ada perubahan dan bukan draft
+            if record.state != 'draft' and vals:
+                # Pastikan tidak mengupdate create_date jika hanya state yang berubah
+                if 'state' not in vals or len(vals) > 1:
+                    vals['create_date'] = fields.Datetime.now()
+        
+        return super(InventoryStock, self).write(vals)
+
     @api.model
     def create(self, vals):
         """Override create method to automatically generate doc_num using sequence."""
@@ -385,6 +413,9 @@ class InventoryStock(models.Model):
 
         # Create `doc_num` dengan sequence-generated number
         vals['doc_num'] = f"{INC}/{date_str}/{time_str}/{doc_num_seq}"
+        
+        # Set create_date
+        vals['create_date'] = fields.Datetime.now()
 
         # Memanggil super untuk membuat record dan mengisi detail lainnya
         record = super(InventoryStock, self).create(vals)
@@ -470,6 +501,17 @@ class InventoryStock(models.Model):
                 line.qty_hand = stock_akhir_real
         return True
 
+    def action_closed(self):
+        """Ubah status menjadi closed, data tidak bisa diubah lagi"""
+        for record in self:
+            if record.state != 'counted':
+                raise ValidationError("Hanya inventory dengan status 'Counted' yang bisa di-closed.")
+            
+            record.state = 'closed'
+            for line in record.inventory_counting_ids:
+                line.state = 'closed'
+        return True
+
 
 class InventoryCounting(models.Model):
     _name = "inventory.counting"
@@ -491,6 +533,7 @@ class InventoryCounting(models.Model):
         ('draft', 'Draft'),
         ('in_progress', 'In Progress'),
         ('counted', 'Counted'),
+        ('closed', 'Closed'),
     ], string='Status', default='draft', required=True, readonly=True, copy=False, tracking=True)
     is_edit = fields.Boolean(string="Edit")
     sequence = fields.Integer(string="Sequence", default=0)

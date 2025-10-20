@@ -9,22 +9,36 @@ class ReportSaleDetailsInherit(models.AbstractModel):
     _inherit = "report.point_of_sale.report_saledetails"
 
     def get_sale_details(self, date_start=False, date_stop=False, config_ids=False, session_ids=False):
-        # 🔹 Panggil bawaan dulu
-        res = super().get_sale_details(date_start, date_stop, config_ids, session_ids)
-
+        """
+        Override untuk:
+        1. Menghilangkan SEMUA cash moves dari closing popup
+        2. Menambahkan total modal ke expected cash amount
+        """
+        # Panggil bawaan dulu
+        result = super().get_sale_details(date_start, date_stop, config_ids, session_ids)
+        
         sessions = self.env["pos.session"].browse(session_ids) if session_ids else []
+        
         for session in sessions:
-            # 🔹 Ambil total modal semua shift dalam session
-            modal_total = sum(self.env["end.shift"].search([("session_id", "=", session.id)]).mapped("modal"))
+            # Ambil total modal semua shift dalam session
+            total_modal = sum(
+                self.env["end.shift"].search([
+                    ("session_id", "=", session.id)
+                ]).mapped("modal")
+            )
 
-            for payment in res.get("payments", []):
-                if payment.get("session") == session.id and payment.get("cash"):
-                    # final_count asli + modal_total
-                    payment["final_count"] = (payment.get("final_count") or 0.0) + modal_total
-                    # difference harus ikut update
-                    payment["money_difference"] = (payment.get("money_counted") or 0.0) - payment["final_count"]
-
-        return res
+            # ✅ KOSONGKAN SEMUA CASH MOVES & UPDATE EXPECTED
+            for payment in result.get("payments", []):
+                if payment.get("session") == session.id:
+                    # Kosongkan semua cash moves
+                    payment["cash_moves"] = []
+                    
+                    # Update final_count untuk cash dengan modal
+                    if payment.get("cash"):
+                        payment["final_count"] = (payment.get("final_count") or 0.0) + total_modal
+                        payment["money_difference"] = (payment.get("money_counted") or 0.0) - payment["final_count"]
+        
+        return result
 
 class PosSession(models.Model):
     _inherit = 'pos.session'
@@ -251,12 +265,9 @@ class PosSession(models.Model):
             'res.partner',
             'res.config.settings',
             'res.company',
-            'product.product',
-            'pos.cashier.log',
             'barcode.config',
             'hr.employee',
             'hr.employee.config.settings',
-            'multiple.barcode',
         ]
         
         for model_name in model_checks:
@@ -334,7 +345,7 @@ class PosSession(models.Model):
             'search_params': {
                 'domain': [('id', '=', self.env.company.id)],
                 'fields': [
-                    'id', 'name', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 
+                    'id', 'logo', 'name', 'street', 'street2', 'city', 'zip', 'country_id', 'vat', 
                 ],
             }
         }
@@ -369,7 +380,7 @@ class PosSession(models.Model):
         return {
             'search_params': {
                 'domain': [],
-                'fields': ['id', 'name', 'work_email', 'mobile_phone', 'job_title', 'pin'],
+                'fields': ['id', 'name', 'work_email', 'mobile_phone', 'job_title', 'pin', 'image_128'],
             }
         }
 
@@ -397,7 +408,7 @@ class PosSession(models.Model):
         return {
             'search_params': {
                 'domain': [],
-                'fields': ['id', 'employee_id', 'is_cashier', 'is_sales_person'],
+                'fields': ['id', 'employee_id', 'is_cashier'],
             }
         }
 
@@ -502,60 +513,6 @@ class PosSession(models.Model):
     def _pos_ui_barcode_config(self, params):
         return self._get_pos_ui_barcode_config(params)
     
-    # def _loader_params_end_shift_line(self):
-    #     return {
-    #         'search_params': {
-    #             'domain': [],
-    #             'fields': [
-    #                 'id',
-    #                 'end_shift_id',
-    #                 'payment_method_id',
-    #                 'expected_amount',
-    #                 'payment_date',
-    #                 'amount',
-    #                 'amount_difference',
-    #                 'state',
-    #             ],
-    #         }
-    #     }
-
-    # def _get_pos_ui_end_shift_line(self, params):
-    #     try:
-    #         if 'end.shift.line' not in self.env:
-    #             _logger.warning("⚠️ Model end.shift.line not found")
-    #             return []
-                
-    #         records = self.env['end.shift.line'].search_read(
-    #             params['search_params'].get('domain', []),
-    #             params['search_params']['fields'],
-    #             limit=1000
-    #         )
-            
-    #         # Process relational fields
-    #         for rec in records:
-    #             if rec.get('end_shift_id'):
-    #                 if isinstance(rec['end_shift_id'], int):
-    #                     end_shift = self.env['end.shift'].browse(rec['end_shift_id'])
-    #                     rec['end_shift_id'] = [rec['end_shift_id'], end_shift.name if end_shift.exists() else '']
-    #                 elif isinstance(rec['end_shift_id'], list) and len(rec['end_shift_id']) >= 2:
-    #                     rec['end_shift_id'] = [int(rec['end_shift_id'][0]), str(rec['end_shift_id'][1])]
-                        
-    #             if rec.get('payment_method_id'):
-    #                 if isinstance(rec['payment_method_id'], int):
-    #                     payment_method = self.env['pos.payment.method'].browse(rec['payment_method_id'])
-    #                     rec['payment_method_id'] = [rec['payment_method_id'], payment_method.name if payment_method.exists() else '']
-    #                 elif isinstance(rec['payment_method_id'], list) and len(rec['payment_method_id']) >= 2:
-    #                     rec['payment_method_id'] = [int(rec['payment_method_id'][0]), str(rec['payment_method_id'][1])]
-                    
-    #         _logger.info(f"✅ Loaded {len(records)} end.shift.line records")
-    #         return records
-    #     except Exception as e:
-    #         _logger.error(f"❌ Error loading end.shift.line: {e}")
-    #         return []
-
-    # def _pos_ui_end_shift_line(self, params):
-    #     return self._get_pos_ui_end_shift_line(params)
-    
     def _loader_params_pos_cashier_log(self):
         return {
             'search_params': {
@@ -604,136 +561,6 @@ class PosSession(models.Model):
 
     def _pos_ui_pos_cashier_log(self, params):
         return self._get_pos_ui_pos_cashier_log(params)
-    
-    # def _loader_params_end_shift(self):
-    #     return {
-    #         'search_params': {
-    #             'domain': [],
-    #             'fields': [
-    #                 'id',
-    #                 'session_id',
-    #                 'cashier_id',
-    #                 'start_date',
-    #                 'end_date',
-    #                 'state',
-    #                 'line_ids',
-    #             ],
-    #         }
-    #     }
-
-    # def _get_pos_ui_end_shift(self, params):
-    #     try:
-    #         if 'end.shift' not in self.env:
-    #             _logger.warning("⚠️ Model end.shift not found")
-    #             return []
-                
-    #         records = self.env['end.shift'].search_read(
-    #             params['search_params'].get('domain', []),
-    #             params['search_params']['fields'],
-    #             limit=1000
-    #         )
-            
-    #         for rec in records:
-    #             # Process session_id
-    #             if rec.get('session_id'):
-    #                 if isinstance(rec['session_id'], int):
-    #                     session = self.env['pos.session'].browse(rec['session_id'])
-    #                     rec['session_id'] = [rec['session_id'], session.name if session.exists() else '']
-    #                 elif isinstance(rec['session_id'], list) and len(rec['session_id']) >= 2:
-    #                     rec['session_id'] = [int(rec['session_id'][0]), str(rec['session_id'][1])]
-                    
-    #             # Process cashier_id
-    #             if rec.get('cashier_id'):
-    #                 if isinstance(rec['cashier_id'], int):
-    #                     cashier = self.env['hr.employee'].browse(rec['cashier_id'])
-    #                     rec['cashier_id'] = [rec['cashier_id'], cashier.name if cashier.exists() else '']
-    #                 elif isinstance(rec['cashier_id'], list) and len(rec['cashier_id']) >= 2:
-    #                     rec['cashier_id'] = [int(rec['cashier_id'][0]), str(rec['cashier_id'][1])]
-                    
-    #             # Process line_ids
-    #             if rec.get('line_ids'):
-    #                 if isinstance(rec['line_ids'], list):
-    #                     rec['line_ids'] = [int(x) for x in rec['line_ids'] if str(x).isdigit()]
-                    
-    #         _logger.info(f"✅ Loaded {len(records)} end.shift records")
-    #         return records
-    #     except Exception as e:
-    #         _logger.error(f"❌ Error loading end.shift: {e}")
-    #         return []
-
-    # def _pos_ui_end_shift(self, params):
-    #     return self._get_pos_ui_end_shift(params)
-
-    def _loader_params_product_product(self):
-        """Enhanced product loader with better error handling"""
-        try:
-            res = super()._loader_params_product_product()
-            
-            # Ensure we have the required fields
-            required_fields = ['is_fixed_price', 'default_code', 'available_in_pos', 'type', 'barcode']
-            for field in required_fields:
-                if field not in res['search_params']['fields']:
-                    res['search_params']['fields'].append(field)
-            
-            return res
-        except Exception as e:
-            _logger.error(f"❌ Error in _loader_params_product_product: {e}")
-            # Fallback to basic params
-            return {
-                'search_params': {
-                    'domain': [('available_in_pos', '=', True)],
-                    'fields': [
-                        'id', 'name', 'display_name', 'default_code', 'lst_price', 
-                        'standard_price', 'available_in_pos', 'is_fixed_price', 
-                        'categ_id', 'barcode', 'type', 'uom_id', 'taxes_id',
-                        'pos_categ_ids', 'write_date', 'tracking', 'to_weight'
-                    ]
-                }
-            }
-    
-    def _pos_ui_product_product(self, params):
-        """Enhanced product loading with better error handling"""
-        try:
-            result = self.env['product.product'].search_read(
-                params['search_params']['domain'],
-                params['search_params']['fields'],
-                limit=5000  # Add limit
-            )
-            
-            # Process each product
-            for product in result:
-                # Set default for is_fixed_price
-                if 'is_fixed_price' not in product:
-                    product['is_fixed_price'] = False
-                product['is_fixed_price'] = bool(product.get('is_fixed_price', False))
-                
-                # Handle relational fields
-                for field in ['categ_id', 'uom_id']:
-                    if product.get(field):
-                        if isinstance(product[field], int):
-                            try:
-                                if field == 'categ_id':
-                                    record = self.env['product.category'].browse(product[field])
-                                elif field == 'uom_id':
-                                    record = self.env['uom.uom'].browse(product[field])
-                                
-                                if record.exists():
-                                    product[field] = [product[field], record.name]
-                            except Exception as e:
-                                _logger.warning(f"⚠️ Error processing {field}: {e}")
-                        elif isinstance(product[field], list) and len(product[field]) >= 2:
-                            product[field] = [int(product[field][0]), str(product[field][1])]
-                
-                # Handle Many2many fields
-                for field in ['taxes_id', 'pos_categ_ids']:
-                    if product.get(field) and isinstance(product[field], list):
-                        product[field] = [int(x) for x in product[field] if str(x).isdigit()]
-            
-            _logger.info(f"✅ Loaded {len(result)} products")
-            return result
-        except Exception as e:
-            _logger.error(f"❌ Error loading product.product: {e}")
-            return []
 
     def _loader_params_res_config_settings(self):
         return {'search_params': {'fields': []}}
@@ -825,6 +652,14 @@ class PosSession(models.Model):
             domain = self._get_partners_domain() if hasattr(self, '_get_partners_domain') else []
         except Exception:
             domain = []
+        
+        # ✅ TAMBAHKAN: Pastikan default customer selalu ter-load
+        if self.config_id.default_partner_id:
+            default_partner_id = self.config_id.default_partner_id.id
+            if domain:
+                domain = ['|', ('id', '=', default_partner_id)] + domain
+            else:
+                domain = [('id', '=', default_partner_id)]
             
         return {
             'search_params': {
@@ -833,7 +668,8 @@ class PosSession(models.Model):
                     'name', 'street', 'city', 'state_id', 'country_id',
                     'vat', 'lang', 'phone', 'zip', 'mobile', 'email',
                     'barcode', 'write_date', 'property_account_position_id',
-                    'property_product_pricelist', 'parent_name', 'category_id'
+                    'property_product_pricelist', 'parent_name', 'category_id',
+                    'is_store', 'vit_customer_group',
                 ],
             }
         }
@@ -843,8 +679,18 @@ class PosSession(models.Model):
             partners = self.env['res.partner'].search_read(
                 params['search_params'].get('domain', []),
                 params['search_params']['fields'],
-                limit=5000
+                limit=1000,
+                order='write_date DESC'
             )
+            
+            # ✅ VALIDASI: Log jika default customer ter-load
+            if self.config_id.default_partner_id:
+                default_id = self.config_id.default_partner_id.id
+                is_loaded = any(p['id'] == default_id for p in partners)
+                if is_loaded:
+                    _logger.info(f"✅ Default customer {self.config_id.default_partner_id.name} loaded")
+                else:
+                    _logger.warning(f"⚠️ Default customer {self.config_id.default_partner_id.name} NOT loaded")
             
             for partner in partners:
                 # Handle category_id

@@ -1,9 +1,5 @@
-import requests
-from datetime import datetime, timedelta
-import pytz
-from odoo import models, fields, api, SUPERUSER_ID, _
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
-
 import random
 
 class StockPicking(models.Model):
@@ -15,6 +11,38 @@ class StockPicking(models.Model):
     target_location = fields.Many2one('master.warehouse', string="Target Location")
     targets = fields.Char(string="Target Locations")
 
+    def write(self, vals):
+        # Cek jika status sudah ready atau done dan mencoba mengubah field yang dibatasi
+        restricted_states = ['assigned', 'done']  # ready = assigned, done = done
+        
+        for record in self:
+            if record.state in restricted_states:
+                # Field yang tidak boleh diubah ketika ready/done
+                restricted_fields = ['target_location', 'location_id', 'location_dest_id']
+                for field in restricted_fields:
+                    if field in vals:
+                        raise UserError(_("Cannot modify field '%s' when transfer is in %s state.") % (field, record.state))
+                
+                # Cek jika ada perubahan pada move lines (tambah/hapus item)
+                if 'move_ids_without_package' in vals:
+                    move_operations = vals.get('move_ids_without_package', [])
+                    
+                    for operation in move_operations:
+                        # (0, 0, values) - CREATE new line
+                        # (2, id, 0) - DELETE existing line
+                        # (1, id, values) - UPDATE existing line (termasuk qty)
+                        if operation[0] in (0, 2, 1):
+                            if operation[0] == 0:
+                                action = "add new items"
+                            elif operation[0] == 2:
+                                action = "delete items" 
+                            else:
+                                action = "modify items or quantities"
+                            
+                            raise UserError(_("Cannot %s when transfer is in %s state.") % (action, record.state))
+        
+        return super(StockPicking, self).write(vals)
+
     @api.model
     def create(self, vals):
         picking_type = None
@@ -22,13 +50,6 @@ class StockPicking(models.Model):
         # Get picking type from vals if available
         if vals.get('picking_type_id'):
             picking_type = self.env['stock.picking.type'].browse(vals['picking_type_id'])
-
-        # Check if restricted type and has move lines
-        # restricted_types = ['TS Out', 'TS In', 'GRPO']
-        # if picking_type and picking_type.name in restricted_types and vals.get('move_ids_without_package'):
-        #     raise ValidationError(_(
-        #         "Cannot add items to lines for operation type: %s" % picking_type.name
-        #     ))
 
         return super(StockPicking, self).create(vals)
 
@@ -52,8 +73,6 @@ class StockPicking(models.Model):
         
         product_codes = ['LBR00001', 'LBR00002', 'LBR00003', 'LBR00088', 'LBR00099', 'LBR00008', 'LBR00007', 'LBR00006', 'LBR00009', 'LBR00004']
         products = self.env['product.product'].search([('default_code', 'in', product_codes)])
-        # if len(products) != 10:
-        #     raise UserError('Tidak semua produk dengan default_code yang ditentukan ditemukan.')
 
         stock_pickings = []
         for i in range(500):
@@ -64,7 +83,6 @@ class StockPicking(models.Model):
                 move_lines.append((0, 0, {
                     'name': product.name,
                     'product_id': product.id,
-                    # 'product_uom_id': product.uom_id.id,
                     'product_uom_qty': quantity,
                     'quantity': quantity,
                     'location_id': 4,
@@ -89,14 +107,3 @@ class StockPicking(models.Model):
 
         for res in ts_out:
             res.write({'is_integrated': False})
-
-    # def write(self, vals):
-    #     # If someone tries to modify move_ids on restricted picking types
-    #     for record in self:
-    #         restricted_types = ['TS Out', 'TS In', 'GRPO']
-    #         if record.picking_type_id.name in restricted_types and 'move_ids_without_package' in vals:
-    #             raise ValidationError(_(
-    #                 "You cannot modify or add lines to this operation type: %s" % record.picking_type_id.name
-    #             ))
-
-    #     return super(StockPicking, self).write(vals)

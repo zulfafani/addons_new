@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Inherit PartnerListScreen to add Groups header -->
+    <t t-name="point_of_sale.PartnerListScreen" t-inherit="point_of_sale.PartnerListScreen" t-inherit-mode="extension">
+        
+        <!-- Add Groups header after Contact header -->
+        <xpath expr="//table[@class='partner-list table table-striped w-100']//thead//th[@class='partner-line-email py-2']" position="after">
+            <th class="partner-line-groups py-2">Groups</th>
+        </xpath>
+        
+    </t>
+
+    <!-- Inherit PartnerLine to add Groups & Pricelist column -->
+    <t t-name="point_of_sale.PartnerLine" t-inherit="point_of_sale.PartnerLine" t-inherit-mode="extension">
+        
+        <!-- Add new column BEFORE Balance column -->
+        <xpath expr="//td[@class='partner-line-balance']" position="before">
+            <td class="partner-line-group-pricelist">
+                <!-- Customer Group -->
+                <div class="mb-2" t-if="props.partner.vit_customer_group">
+                    <i class="fa fa-fw fa-users me-2"/>
+                    <span class="text-muted">Group: </span>
+                    <t t-esc="props.partner.vit_customer_group[1]" />
+                </div>
+                
+                <!-- Pricelist -->
+                <div class="mb-2" t-if="props.partner.property_product_pricelist">
+                    <i class="fa fa-fw fa-tag me-2"/>
+                    <span class="text-muted">Pricelist: </span>
+                    <t t-esc="props.partner.property_product_pricelist[1]" />
+                </div>
+            </td>
+        </xpath>
+        
+    </t>
+
+</templates>

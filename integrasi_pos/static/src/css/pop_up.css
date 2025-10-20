@@ -1,25 +1,26 @@
 /* Styling untuk popup End Shift Session */
 .end-shift-session-popup {
-    width: 600px;  /* Adjusted to match the width from your screenshot */
+    width: 600px;
     background-color: #fff;
-    border-radius: 8px;  /* Slightly increased border radius */
-    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);  /* Softer shadow */
+    border-radius: 8px;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
     font-family: 'Odoo', sans-serif;
 }
 
 /* Styling header dari popup */
 .end-shift-session-popup header {
-    background-color: #f0f0f0;  /* Changed to match the light gray background in the screenshot */
+    background-color: #f0f0f0;
     padding: 15px;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
-    border-bottom: 1px solid #ccc;  /* Added border for a clearer separation */
+    border-bottom: 1px solid #ccc;
 }
 
 .end-shift-session-popup header h2 {
     margin: 0;
-    font-size: 18px;
-    color: #333;  /* Dark gray font color */
+    font-size: 16px;  /* Reduced from 18px */
+    color: #333;
+    font-weight: 600;
 }
 
 /* Styling untuk field readonly */
@@ -37,7 +38,7 @@
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    padding-right: 10px; /* Mengurangi padding kanan karena arrow sudah dihilangkan */
+    padding-right: 10px;
 }
 
 /* Styling konten utama popup */
@@ -52,36 +53,58 @@
     margin-bottom: 15px;
     padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 5px;  /* Adjusted radius for a smoother look */
-    font-size: 14px;
-    background-color: #fff;  /* White background for the fields */
+    border-radius: 5px;
+    font-size: 14px;  /* Ukuran font yang sama untuk semua field */
+    background-color: #fff;
+    text-align: left;  /* Default alignment for text fields */
+}
+
+/* Styling khusus untuk field tanggal/waktu - center aligned */
+.input-field[type="datetime-local"],
+.input-field.datetime-field {
+    text-align: center;
+    font-size: 14px;  /* Sama dengan field lainnya */
+    font-weight: 400;  /* Normal weight */
+    letter-spacing: 0.3px;
+    color: #999;  /* Gray color to match the screenshot */
+}
+
+/* Styling untuk cashier field */
+.input-field.cashier-field {
+    text-align: center;
+    font-size: 14px;  /* Sama dengan field lainnya */
+    font-weight: 400;  /* Normal weight */
+    color: #999;  /* Gray color */
 }
 
 /* Footer section */
 .footer {
     text-align: right;
     padding: 15px;
-    background-color: #f1f1f1;  /* Light gray background for footer */
+    background-color: #f1f1f1;
     border-top: 1px solid #ccc;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
 
 /* Styling umum untuk button */
 .button {
-    padding: 10px 20px;
-    font-size: 14px;
+    padding: 8px 16px;  /* Reduced padding */
+    font-size: 13px;  /* Reduced from 14px */
     cursor: pointer;
     border-radius: 5px;
     border: none;
     margin-left: 10px;
+    font-weight: 500;
 }
 
 /* Button confirm dengan warna ungu */
 .confirm {
-    background-color: #7e3b76;  /* Purple color similar to the screenshot */
+    background-color: #7e3b76;
     color: white;
     transition: background-color 0.3s;
-    margin-right: 15px;  /* Tambahkan spasi antara tombol Save dan Discard */
-    margin-bottom: 15px;
+    margin-right: 10px;
+    margin-bottom: 0;
 }
 
 .confirm:hover {
@@ -90,17 +113,16 @@
 
 /* Button cancel dengan warna abu-abu */
 .cancel {
-    background-color: #f5efef;  /* Light gray color similar to the Discard button */
+    background-color: #f5efef;
     color: black;
     transition: background-color 0.3s;
-    margin-left: 15px;  /* Tambahkan spasi antara tombol Save dan Discard */
-    margin-bottom: 15px;
+    margin-left: 5px;
+    margin-bottom: 0;
 }
 
 .cancel:hover {
     background-color: #b3b3b3;
 }
-
 
 /* Styling untuk popup success/error */
 .succes-error-popup {
@@ -119,7 +141,7 @@
 
 .succes-error-popup header h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;  /* Reduced from 18px */
     color: #333;
     font-weight: 600;
 }
@@ -129,7 +151,7 @@
     padding: 20px;
     background-color: white;
     color: #4c4c4c;
-    font-size: 14px;
+    font-size: 13px;  /* Reduced from 14px */
     line-height: 1.5;
 }
 
@@ -153,7 +175,7 @@
 .succes-error-popup .button {
     padding: 8px 16px;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;  /* Reduced from 14px */
     font-weight: 500;
     cursor: pointer;
     border: none;
@@ -195,5 +217,3 @@
 .succes-error-popup[data-type="success"] header h2 {
     color: #16a34a;
 }
-
-

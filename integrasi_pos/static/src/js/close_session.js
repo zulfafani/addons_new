@@ -12,6 +12,21 @@ patch(ClosePosPopup.prototype, {
     setup() {
         console.log("✅ Setup called");
         super.setup();
+        
+        // ✅ KOSONGKAN SEMUA CASH MOVES - tidak tampilkan Opening, Cash in/out, dll
+        if (this.props.default_cash_details) {
+            this.props.default_cash_details.moves = [];
+        }
+        
+        // Kosongkan juga untuk other payment methods jika ada
+        if (this.props.other_payment_methods) {
+            this.props.other_payment_methods.forEach(pm => {
+                if (pm.moves) {
+                    pm.moves = [];
+                }
+            });
+        }
+        
         if (!this.popup) {
             this.popup = useService("popup");
         }
@@ -151,25 +166,7 @@ patch(ClosePosPopup.prototype, {
             return;
         }
 
-        // 2. ✅ FIXED: Manager validation hanya WARNING, bukan BLOCKER
-        const config = this.pos.config;
-        const managerValidation = config?.manager_validation;
-        const validateCloseSession = config?.validate_close_session;
-
-        // ❌ JANGAN BLOCK di sini, hanya show warning jika perlu
-        // Manager validation seharusnya ditangani di backend atau dengan cara lain
-        // Untuk sekarang, kita SKIP logic ini agar CustomNumpadPopUp bisa muncul
-        
-        // if (managerValidation && validateCloseSession) {
-        //     // OPTION 1: Show warning tapi tetap lanjut
-        //     await this.popup.add(ErrorPopup, {
-        //         title: _t("Manager Approval Notice"),
-        //         body: _t("This session requires manager validation. Please ensure you have proper authorization."),
-        //     });
-        //     // Tidak return di sini, lanjut ke popup berikutnya
-        // }
-
-        // 3. ✅ Show CustomNumpadPopup for cash counted - INI HARUS MUNCUL
+        // 2. Show CustomNumpadPopup for cash counted
         console.log("🎯 Showing CustomNumpadPopUp...");
         
         const { confirmed, payload } = await this.popup.add(CustomNumpadPopUp, {
@@ -190,7 +187,7 @@ patch(ClosePosPopup.prototype, {
             return;
         }
 
-        // 4. Update counted cash value
+        // 3. Update counted cash value
         if (this.pos.config.cash_control && payload !== undefined && payload !== null) {
             const numericValue = parseFloat(payload);
             if (!isNaN(numericValue)) {
@@ -200,10 +197,10 @@ patch(ClosePosPopup.prototype, {
             }
         }
 
-        // 5. Customer display update
+        // 4. Customer display update
         this.customerDisplay?.update({ closeUI: true });
         
-        // 6. Push orders
+        // 5. Push orders
         console.log("📤 Pushing orders...");
         const syncSuccess = await this.pos.push_orders_with_closing_popup();
         if (!syncSuccess) {
@@ -212,7 +209,7 @@ patch(ClosePosPopup.prototype, {
         }
         console.log("✅ Orders synced successfully");
 
-        // 7. ✅ Post closing cash details (akan update balance_start & balance_end_real)
+        // 6. Post closing cash details
         if (this.pos.config.cash_control) {
             const countedCash = parseFloat(
                 this.state.payments[this.props.default_cash_details.id].counted
@@ -242,7 +239,7 @@ patch(ClosePosPopup.prototype, {
             }
         }
 
-        // 8. Update closing control state
+        // 7. Update closing control state
         console.log("📝 Updating closing control state...");
         try {
             await this.orm.call("pos.session", "update_closing_control_state_session", [
@@ -258,7 +255,7 @@ patch(ClosePosPopup.prototype, {
             console.log("⚠️ Session already closed (expected)");
         }
 
-        // 9. Close session from UI
+        // 8. Close session from UI
         console.log("🔐 Closing session...");
         try {
             const bankPaymentMethodDiffPairs = this.props.other_payment_methods

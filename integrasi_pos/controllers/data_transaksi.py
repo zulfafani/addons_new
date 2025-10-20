@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import pytz
 import re
 import concurrent.futures
+from threading import Lock
+import datetime
 
 # kalau ada case store nya beda zona waktu gimana
 class DataTransaksi:
@@ -353,31 +355,23 @@ class DataTransaksi:
 
             picking_type_mapping = {str(pt['id']): pt['id_mc'] for pt in picking_type_source if pt.get('id_mc')}
 
-            # BoM
-            # 🔹 BoM Mapping menggunakan 'code'
-            # Ambil kode BoM dari source
+            # BoM Mapping menggunakan 'code'
             bom_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
                 self.source_client.uid, self.source_client.password,
                 'mrp.bom', 'search_read',
                 [[['id', 'in', bom_ids]]],
                 {'fields': ['id', 'code']})
 
-            # Buat mapping id_source -> code
             bom_source_dict = {str(b['id']): b.get('code') for b in bom_source if b.get('code')}
 
-            # Cari BoM di target berdasarkan code
             bom_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
                 self.target_client.uid, self.target_client.password,
                 'mrp.bom', 'search_read',
                 [[['code', 'in', list(bom_source_dict.values())]]],
                 {'fields': ['id', 'code']})
 
-            # Buat mapping code -> id_target
             bom_target_dict = {b['code']: b['id'] for b in bom_target}
-
-            # Mapping akhir: id_source -> id_target berdasarkan code yang sama
             bom_dict = {src_id: bom_target_dict.get(code) for src_id, code in bom_source_dict.items() if code in bom_target_dict}
-
 
             # User Mapping
             user_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
@@ -403,33 +397,23 @@ class DataTransaksi:
                 [[['raw_material_production_id', 'in', picking_ids]]],
                 {'fields': ['product_id', 'location_id', 'product_uom_qty', 'quantity', 'picked', 'picking_id']})
 
-            manufacture_order_lines_dict = {}
-            for line in manufacture_order_lines:
-                picking_id = line['picking_id'][0] if isinstance(line['picking_id'], list) else line['picking_id']
-                manufacture_order_lines_dict.setdefault(picking_id, []).append(line)
-
             product_ids = [line['product_id'][0] for line in manufacture_order_lines if line.get('product_id')]
-            # Step 1: Fetch product.product data from source_client using product_ids
+            
             product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                            self.source_client.uid, self.source_client.password,
-                                                            'product.product', 'search_read',
-                                                            [[['id', 'in', product_ids]]],
-                                                            {'fields': ['id', 'product_tmpl_id', 'default_code']})
+                self.source_client.uid, self.source_client.password,
+                'product.product', 'search_read',
+                [[['id', 'in', product_ids]]],
+                {'fields': ['id', 'product_tmpl_id', 'default_code']})
 
-            # Step 2: Create a dictionary to map product_id to default_code
             product_source_dict = {product['id']: product['default_code'] for product in product_source if 'default_code' in product}
-
-            # Step 3: Create a mapping from default_code to product_tmpl_id
             default_code_to_product_tmpl_id = {product['default_code']: product['product_tmpl_id'] for product in product_source if 'default_code' in product}
 
-            # Step 4: Fetch product.template data from target_client using default_code
             product_template_target_source = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                            self.target_client.uid, self.target_client.password,
-                                                                            'product.product', 'search_read',
-                                                                            [[['default_code', 'in', list(default_code_to_product_tmpl_id.keys())]]],
-                                                                            {'fields': ['id', 'default_code']})
+                self.target_client.uid, self.target_client.password,
+                'product.product', 'search_read',
+                [[['default_code', 'in', list(default_code_to_product_tmpl_id.keys())]]],
+                {'fields': ['id', 'default_code']})
 
-            # Step 5: Create a mapping from default_code to id in target_client
             default_code_to_target_id = {template['default_code']: template['id'] for template in product_template_target_source}
 
             def process_mrp_order(record):
@@ -443,10 +427,10 @@ class DataTransaksi:
                         return
                     
                     manufacture_order_lines = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                                            self.source_client.uid, self.source_client.password,
-                                                                            'stock.move', 'search_read',
-                                                                            [[['raw_material_production_id', 'in', [record['id']]]]],
-                                                                            {'fields': ['product_id', 'location_id', 'product_uom_qty', 'quantity', 'picked', 'picking_id']})
+                        self.source_client.uid, self.source_client.password,
+                        'stock.move', 'search_read',
+                        [[['raw_material_production_id', 'in', [record['id']]]]],
+                        {'fields': ['product_id', 'location_id', 'product_uom_qty', 'quantity', 'picked', 'picking_id']})
 
                     location_id = location_source_dict.get(str(record['location_src_id'][0] if isinstance(record['location_src_id'], list) else record['location_src_id']))
                     location_dest_id = location_dest_source_dict.get(str(record['location_dest_id'][0] if isinstance(record['location_dest_id'], list) else record['location_dest_id']))
@@ -473,8 +457,6 @@ class DataTransaksi:
                     should_skip_create = False
                     for line in manufacture_order_lines:
                         source_product_code = product_source_dict.get(line.get('product_id')[0])
-
-                        # Step 7: Get the target product ID using the default_code mapping
                         target_product_template_id = default_code_to_target_id.get(source_product_code)
 
                         if not target_product_template_id:
@@ -485,7 +467,6 @@ class DataTransaksi:
                         manufacture_order_line_ids.append((0, 0, {
                             'product_id': int(target_product_template_id),
                             'product_uom_qty': line.get('product_uom_qty'),
-                            'quantity': line.get('quantity'),
                             'location_id': int(location_id),
                         }))
                     
@@ -501,10 +482,13 @@ class DataTransaksi:
                     if len(manufacture_order_lines) != len(manufacture_order_line_ids):
                         return
                     
+                    source_product_qty = record.get('product_qty')
+                    print(f"🔍 Source product_qty: {source_product_qty}")
+                    
                     mrp_data = {
                         'date_start': record.get('date_start'),
-                        'date_finished': record.get('date_finished'),
-                        'product_qty': record.get('product_qty'),
+                        'product_qty': source_product_qty,
+                        'qty_producing': record.get('qty_producing'),
                         'user_id': user_id,
                         'vit_trxid': record.get('name'),
                         'location_src_id': int(location_id),
@@ -512,18 +496,197 @@ class DataTransaksi:
                         'picking_type_id': int(picking_type_id),
                         'bom_id': int(bom_id),
                         'product_id': product_variant_id,
-                        'move_raw_ids': manufacture_order_line_ids
+                        'move_raw_ids': manufacture_order_line_ids,
                     }
 
+                    # Step 1: Create MRP
                     new_mrp_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                        self.target_client.uid, self.target_client.password,
-                        'mrp.production', 'create', [mrp_data])
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'mrp.production', 'create', [mrp_data],
+                        {'context': {'bypass_integration_check': True}})
+                    
+                    print(f"📦 MRP ID {new_mrp_id} created")
+                    
+                    # Verify product_qty after create
+                    mrp_after_create = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'mrp.production', 'read', [[new_mrp_id]], 
+                        {'fields': ['product_qty', 'product_uom_id']})
+                    print(f"🔍 After create - product_qty: {mrp_after_create[0].get('product_qty')}")
 
-                    for action in ['action_confirm', 'action_assign', 'button_mark_done']:
+                    # Step 2: Confirm MRP (state: confirmed)
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'mrp.production', 'action_confirm', [[new_mrp_id]],
+                        {'context': {'bypass_integration_check': True}})
+                    
+                    print(f"✅ MRP ID {new_mrp_id} confirmed")
+                    
+                    # Verify product_qty after confirm
+                    mrp_after_confirm = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'mrp.production', 'read', [[new_mrp_id]], 
+                        {'fields': ['product_qty', 'product_uom_id']})
+                    print(f"🔍 After confirm - product_qty: {mrp_after_confirm[0].get('product_qty')}")
+                    
+                    # PERBAIKAN: Set product_qty setelah confirm jika berubah
+                    if mrp_after_confirm[0].get('product_qty') != source_product_qty:
+                        print(f"⚠️ product_qty berubah! Memaksa kembali ke {source_product_qty}")
                         self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                            self.target_client.uid, self.target_client.password,
-                            'mrp.production', action, [[new_mrp_id]])
+                            self.target_client.uid,
+                            self.target_client.password,
+                            'mrp.production', 'write', [[new_mrp_id], {
+                                'product_qty': source_product_qty
+                            }],
+                            {'context': {'bypass_integration_check': True}})
+                        print(f"✅ product_qty di-set ulang ke {source_product_qty}")
 
+                    # Step 3: Set qty_producing
+                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'mrp.production', 'write', [[new_mrp_id], {
+                            'qty_producing': record.get('qty_producing')
+                        }],
+                        {'context': {'bypass_integration_check': True}})
+                    
+                    print(f"📊 MRP ID {new_mrp_id} qty_producing set to {source_product_qty}")
+
+                    # Step 4: Update quantity untuk setiap move_raw_ids (consumed materials)
+                    for line in manufacture_order_lines:
+                        source_product_code = product_source_dict.get(line.get('product_id')[0])
+                        target_product_id = default_code_to_target_id.get(source_product_code)
+                        
+                        if not target_product_id:
+                            continue
+                        
+                        moves = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                            self.target_client.uid,
+                            self.target_client.password,
+                            'stock.move', 'search_read',
+                            [[['raw_material_production_id', '=', new_mrp_id], 
+                            ['product_id', '=', target_product_id]]],
+                            {'fields': ['id', 'product_uom_qty']})
+                        
+                        if moves:
+                            move_id = moves[0]['id']
+                            # Gunakan quantity dari source (actual consumed)
+                            consumed_qty = line.get('quantity', line.get('product_uom_qty', 0))
+                            
+                            # Update quantity (bukan quantity_done untuk MRP)
+                            self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                self.target_client.uid,
+                                self.target_client.password,
+                                'stock.move', 'write', [[move_id], {
+                                    'quantity': consumed_qty,
+                                    'picked': True
+                                }],
+                                {'context': {'bypass_integration_check': True}})
+                            
+                            print(f"  ✓ Move {move_id} quantity set to {consumed_qty} (expected: {moves[0]['product_uom_qty']})")
+
+                    # Step 5: Update finished product move
+                    finished_moves = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                        self.target_client.uid,
+                        self.target_client.password,
+                        'stock.move', 'search_read',
+                        [[['production_id', '=', new_mrp_id]]],
+                        {'fields': ['id', 'product_id', 'product_uom_qty']})
+                    
+                    for finished_move in finished_moves:
+                        print(f"🔍 Finished move {finished_move['id']} - product_uom_qty: {finished_move.get('product_uom_qty')}")
+                        self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                            self.target_client.uid,
+                            self.target_client.password,
+                            'stock.move', 'write', [[finished_move['id']], {
+                                'product_uom_qty': source_product_qty,
+                                'quantity': source_product_qty,
+                            }],
+                            {'context': {'bypass_integration_check': True}})
+                        print(f"  ✓ Finished move {finished_move['id']} quantity set to {source_product_qty}")
+
+                    # Step 6: Mark as done (dengan handling consumption warning wizard)
+                    try:
+                        result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                            self.target_client.uid,
+                            self.target_client.password,
+                            'mrp.production', 'button_mark_done', [[new_mrp_id]],
+                            {'context': {'bypass_integration_check': True}})
+                        
+                        print(f"🔍 button_mark_done result: {result}")
+                        
+                        # Jika button_mark_done mengembalikan wizard (consumption warning)
+                        if result and isinstance(result, dict):
+                            res_model = result.get('res_model')
+                            print(f"🔍 Wizard detected: {res_model}")
+                            
+                            if res_model == 'mrp.consumption.warning':
+                                print(f"⚠️ Consumption warning wizard muncul untuk MRP {new_mrp_id}")
+                                
+                                # Ambil wizard_id dari result
+                                wizard_id = result.get('res_id')
+                                
+                                if wizard_id:
+                                    print(f"🔍 Wizard ID: {wizard_id}")
+                                    # Confirm wizard
+                                    confirm_result = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                        self.target_client.uid,
+                                        self.target_client.password,
+                                        'mrp.consumption.warning', 'action_confirm', [[wizard_id]],
+                                        {'context': {'bypass_integration_check': True}})
+                                    print(f"✅ Consumption warning confirmed: {confirm_result}")
+                                else:
+                                    print(f"⚠️ Wizard muncul tapi tidak ada res_id")
+                                    print(f"🔍 Full result: {result}")
+                        
+                        # Verifikasi state setelah button_mark_done
+                        mrp_state = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                            self.target_client.uid,
+                            self.target_client.password,
+                            'mrp.production', 'read', [[new_mrp_id]], 
+                            {'fields': ['state']})
+                        
+                        current_state = mrp_state[0]['state'] if mrp_state else 'unknown'
+                        print(f"🔍 Current MRP state: {current_state}")
+                        
+                        if current_state == 'done':
+                            print(f"🎉 MRP ID {new_mrp_id} marked as DONE")
+                        else:
+                            print(f"⚠️ MRP ID {new_mrp_id} masih dalam state: {current_state}")
+                            # Coba set manual jika belum done
+                            raise Exception(f"State masih {current_state}, akan coba set manual")
+                        
+                    except Exception as e:
+                        print(f"⚠️ button_mark_done error atau state belum done: {e}")
+                        # Fallback: set state manually
+                        try:
+                            # Coba ambil state dulu
+                            mrp_check = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                self.target_client.uid,
+                                self.target_client.password,
+                                'mrp.production', 'read', [[new_mrp_id]], 
+                                {'fields': ['state']})
+                            
+                            if mrp_check and mrp_check[0]['state'] != 'done':
+                                self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                    self.target_client.uid,
+                                    self.target_client.password,
+                                    'mrp.production', 'write', [[new_mrp_id], {
+                                        'state': 'done',
+                                        'date_finished': record.get('date_finished')
+                                    }],
+                                    {'context': {'bypass_integration_check': True, 'force_period_date': record.get('date_finished')}})
+                                print(f"✅ MRP ID {new_mrp_id} state set to 'done' manually")
+                            else:
+                                print(f"✅ MRP ID {new_mrp_id} sudah dalam state done")
+                        except Exception as e2:
+                            print(f"💥 Failed to set state manually: {e2}")
+
+                    # Step 7: Mark as integrated in source
                     self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
                         self.source_client.uid, self.source_client.password,
                         'mrp.production', 'write', [[record['id']], {'is_integrated': True}])
@@ -532,6 +695,8 @@ class DataTransaksi:
 
                 except Exception as e:
                     print(f"💥 Gagal proses MO ID {record.get('id')}: {e}")
+                    import traceback
+                    traceback.print_exc()
 
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -1843,6 +2008,75 @@ class DataTransaksi:
             print(f"Terjadi kesalahan saat memproses batch: {e}")
             return
 
+    def transfer_customer_group(self, model_name, fields, description, date_from, date_to):
+        # Ambil data dari sumber
+        transaksi_customer_group = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        model_name, 'search_read',
+                                                        [[]],
+                                                        {'fields': fields})
+        
+        # print(transaksi_warehouse)
+
+        if not transaksi_customer_group:
+            print("Tidak ada master yang ditemukan untuk ditransfer.")
+            return
+        
+        pricelist_ids = [record.get('vit_pricelist_id')[0] if isinstance(record.get('vit_pricelist_id'), list) else record.get('vit_pricelist_id') for record in transaksi_customer_group]
+        # print(location_ids)
+
+        pricelist_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                                                        self.target_client.uid, self.target_client.password,
+                                                        'product.pricelist', 'search_read',
+                                                        [[['id_mc', 'in', str(pricelist_ids)]]],
+                                                        {'fields': ['id', 'name']})
+        
+        pricelist_id_dict = {record['id']: record['id'] for record in pricelist_id}
+
+        # # Kirim data ke target
+        for record in transaksi_customer_group:
+            customer_group_name = record.get('vit_group_name', False)
+            
+            existing_customer_group = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                            self.source_client.uid, self.source_client.password,
+                                                                            'customer.group', 'search_read',
+                                                                            [[['vit_group_name', '=', customer_group_name]]],
+                                                                            {'fields': ['id'], 'limit': 1})
+            if not existing_customer_group:
+                existing_groups = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                                self.source_client.uid, self.source_client.password,
+                                                                                'customer.group', 'search_read',
+                                                                                [[['name', '=', customer_group_name]]],
+                                                                                {'fields': ['id'], 'limit': 1})
+                if existing_groups:
+                    print(f"Customer Groups dengan nama {customer_group_name} sudah ada di master customer group.")
+                    continue
+
+                pricelist_id = pricelist_id_dict.get(record.get('vit_pricelist_id')[0] if isinstance(record.get('vit_pricelist_id'), list) else record.get('vit_pricelist_id'), False)
+
+                customer_group_data = {
+                    'vit_group_name': customer_group_name,
+                    'vit_pricelist_id': int(pricelist_id) if pricelist_id else False,
+                    # 'warehouse_company': [(6, 0, [1])]  # Many2many relation expects a list of IDs
+                }
+                try:
+                    start_time = time.time()
+                    new_customer_group = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                                                                        self.source_client.uid, self.source_client.password,
+                                                                        'customer.group', 'create',
+                                                                        [customer_group_data])
+                    print(f"Customer Group telah dibuat dengan ID: {new_customer_group}")
+
+                    end_time = time.time()
+                    duration = end_time - start_time
+
+                    write_date = self.get_write_date(model_name, record['id'])
+                    self.set_log_mc.create_log_note_success(record, start_time, end_time, duration, 'Customer Group', write_date)
+                    self.set_log_ss.create_log_note_success(record, start_time, end_time, duration, 'Customer Group', write_date)
+                except Exception as e:
+                    message_exception = f"An error occurred while creating warehouse: {e}"
+                    self.set_log_mc.create_log_note_failed(record, 'Customer Group', message_exception, write_date)
+                    self.set_log_ss.create_log_note_failed(record, 'Customer Group', message_exception, write_date)
     
     def transfer_warehouse_master(self, model_name, fields, description, date_from, date_to):
         # Ambil data dari sumber
@@ -2093,6 +2327,7 @@ class DataTransaksi:
                         'location_dest_id': int(transit_location_id),
                         'target_location': target_location_name,
                         'picking_type_id': int(picking_type_id),
+                        'origin': record.get('origin', False),
                         # 'is_integrated': True,
                         'vit_trxid': record.get('name', False),
                         'move_ids_without_package': tsout_transfer_inventory_line_ids,
@@ -3258,9 +3493,12 @@ class DataTransaksi:
         except Exception as e:
             print(f"Gagal membuat atau memposting Goods Issue di Source baru: {e}")
 
+
     def transfer_stock_adjustment(self, model_name, fields, description, date_from, date_to):
+        start_time = datetime.datetime.now()
+        write_date = start_time.strftime('%Y-%m-%d %H:%M:%S')
+
         try:
-            # Step 1: Fetch all needed data sequentially
             transaksi_stock_adjustment = self.source_client.call_odoo(
                 'object', 'execute_kw', self.source_client.db,
                 self.source_client.uid, self.source_client.password,
@@ -3273,50 +3511,48 @@ class DataTransaksi:
                 print("Tidak ada transaksi yang ditemukan untuk ditransfer.")
                 return
 
-            # Step 2: Build dictionaries from required metadata
-            product_ids = list({record.get('product_id')[0] if isinstance(record.get('product_id'), list) else record.get('product_id') for record in transaksi_stock_adjustment})
-            location_ids = list({record.get('location_id')[0] if isinstance(record.get('location_id'), list) else record.get('location_id') for record in transaksi_stock_adjustment})
-            location_dest_ids = list({record.get('location_dest_id')[0] if isinstance(record.get('location_dest_id'), list) else record.get('location_dest_id') for record in transaksi_stock_adjustment})
-            company_ids = list({record.get('company_id')[0] if isinstance(record.get('company_id'), list) else record.get('company_id') for record in transaksi_stock_adjustment if record.get('company_id')})
+            product_ids = {record.get('product_id')[0] if isinstance(record.get('product_id'), list) else record.get('product_id') for record in transaksi_stock_adjustment}
+            location_ids = {record.get('location_id')[0] if isinstance(record.get('location_id'), list) else record.get('location_id') for record in transaksi_stock_adjustment}
+            location_dest_ids = {record.get('location_dest_id')[0] if isinstance(record.get('location_dest_id'), list) else record.get('location_dest_id') for record in transaksi_stock_adjustment}
+            company_ids = {record.get('company_id')[0] if isinstance(record.get('company_id'), list) else record.get('company_id') for record in transaksi_stock_adjustment if record.get('company_id')}
 
-            location_source_dict = {loc['id']: loc['id_mc'] for loc in self.source_client.call_odoo(
-                'object', 'execute_kw', self.source_client.db, self.source_client.uid, self.source_client.password,
-                'stock.location', 'search_read', [[['id', 'in', location_ids]]], {'fields': ['id', 'id_mc']}
-            )}
+            location_source_dict = {loc['id']: loc['id_mc'] for loc in self.source_client.call_odoo('object', 'execute_kw',
+                self.source_client.db, self.source_client.uid, self.source_client.password,
+                'stock.location', 'search_read', [[['id', 'in', list(location_ids)]]], {'fields': ['id', 'id_mc']})}
 
-            location_dest_source_dict = {loc['id']: loc['id_mc'] for loc in self.source_client.call_odoo(
-                'object', 'execute_kw', self.source_client.db, self.source_client.uid, self.source_client.password,
-                'stock.location', 'search_read', [[['id', 'in', location_dest_ids]]], {'fields': ['id', 'id_mc']}
-            )}
+            location_dest_source_dict = {loc['id']: loc['id_mc'] for loc in self.source_client.call_odoo('object', 'execute_kw',
+                self.source_client.db, self.source_client.uid, self.source_client.password,
+                'stock.location', 'search_read', [[['id', 'in', list(location_dest_ids)]]], {'fields': ['id', 'id_mc']})}
 
             product_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db, self.source_client.uid,
-                                                        self.source_client.password, 'product.product', 'search_read',
-                                                        [[['id', 'in', product_ids]]], {'fields': ['id', 'default_code']})
-            product_source_dict = {product['id']: product['default_code'] for product in product_source}
+                self.source_client.password, 'product.product', 'search_read', [[['id', 'in', list(product_ids)]]], {'fields': ['id', 'default_code']})
+            product_source_dict = {p['id']: p['default_code'] for p in product_source}
 
             product_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
-                                                        self.target_client.password, 'product.product', 'search_read',
-                                                        [[['default_code', 'in', list(product_source_dict.values())]]],
-                                                        {'fields': ['id', 'default_code']})
-            product_target_dict = {product['default_code']: product['id'] for product in product_target}
+                self.target_client.password, 'product.product', 'search_read', [[['default_code', 'in', list(product_source_dict.values())]]], {'fields': ['id', 'default_code']})
+            product_target_dict = {p['default_code']: p['id'] for p in product_target}
 
             companies_source = self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                            self.source_client.uid, self.source_client.password,
-                                                            'res.company', 'search_read', [[['id', 'in', company_ids]]],
-                                                            {'fields': ['id', 'name']})
-            company_source_dict = {c['id']: c['name'] for c in companies_source if 'name' in c}
+                self.source_client.uid, self.source_client.password, 'res.company', 'search_read',
+                [[['id', 'in', list(company_ids)]]], {'fields': ['id', 'name']})
+            company_source_dict = {c['id']: c['name'] for c in companies_source}
 
             companies_target = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                            self.target_client.uid, self.target_client.password,
-                                                            'res.company', 'search_read',
-                                                            [[['name', 'in', list(company_source_dict.values())]]],
-                                                            {'fields': ['id', 'name']})
+                self.target_client.uid, self.target_client.password, 'res.company', 'search_read',
+                [[['name', 'in', list(company_source_dict.values())]]], {'fields': ['id', 'name']})
             company_target_dict = {c['name']: c['id'] for c in companies_target}
 
-            # Step 3: Parallel processing of each record
+            # Shared collections with lock
+            batched_data = []
+            data_lock = Lock()
+
+            success_count = 0
+            error_count = 0
+            skipped_count = 0
+
             def _process_single_adjustment_record(record):
+                nonlocal success_count, error_count, skipped_count
                 try:
-                    # Unwrap values
                     company_name = company_source_dict.get(record.get('company_id')[0] if isinstance(record.get('company_id'), list) else record.get('company_id'))
                     company_id = company_target_dict.get(company_name)
                     if not company_id:
@@ -3325,7 +3561,6 @@ class DataTransaksi:
                     product_id = record.get('product_id')[0] if isinstance(record.get('product_id'), list) else record.get('product_id')
                     product_code = product_source_dict.get(product_id)
                     target_product_id = product_target_dict.get(product_code)
-
                     if not target_product_id:
                         raise Exception(f"Product {product_code} tidak ditemukan di target system")
 
@@ -3333,57 +3568,96 @@ class DataTransaksi:
                     dest_loc_id = location_dest_source_dict.get(record.get('location_dest_id')[0] if isinstance(record.get('location_dest_id'), list) else record.get('location_dest_id'))
 
                     existing_quant = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                self.target_client.uid, self.target_client.password,
-                                                                'stock.quant', 'search_read',
-                                                                [[['product_id', '=', target_product_id], ['location_id', '=', int(source_loc_id)]]],
-                                                                {'fields': ['quantity']})
+                        self.target_client.uid, self.target_client.password, 'stock.quant', 'search_read',
+                        [[['product_id', '=', target_product_id], ['location_id', '=', int(source_loc_id)]]], {'fields': ['quantity']})
+
                     existing_quantity = existing_quant[0]['quantity'] if existing_quant else 0
                     adjusted_quantity = record.get('quantity') - existing_quantity
 
                     if adjusted_quantity <= 0:
+                        with data_lock:
+                            skipped_count += 1
                         print(f"[SKIP] Product {product_code} sudah cukup stoknya.")
                         return
 
-                    stock_move_id = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                                self.target_client.uid, self.target_client.password,
-                                                                'stock.move', 'create',
-                                                                [{
-                                                                    'product_id': target_product_id,
-                                                                    'location_id': int(source_loc_id),
-                                                                    'location_dest_id': int(dest_loc_id),
-                                                                    'name': "Product Quantity Updated",
-                                                                    'state': 'done',
-                                                                    'company_id': int(company_id),
-                                                                }])
-                    self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
-                                                self.target_client.uid, self.target_client.password,
-                                                'stock.move.line', 'create',
-                                                [{
-                                                    'product_id': target_product_id,
-                                                    'location_id': int(source_loc_id),
-                                                    'location_dest_id': int(dest_loc_id),
-                                                    'quantity': adjusted_quantity,
-                                                    'move_id': stock_move_id,
-                                                    'state': 'done',
-                                                    'company_id': int(company_id),
-                                                }])
-                    self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
-                                                self.source_client.uid, self.source_client.password,
-                                                model_name, 'write',
-                                                [[record['id']], {'is_integrated': True}])
-                    print(f"[OK] {product_code} qty {adjusted_quantity} berhasil diproses.")
+                    move = {
+                        'product_id': target_product_id,
+                        'location_id': int(source_loc_id),
+                        'location_dest_id': int(dest_loc_id),
+                        'name': "Product Quantity Updated",
+                        'state': 'done',
+                        'company_id': int(company_id),
+                    }
+
+                    move_line = {
+                        'product_id': target_product_id,
+                        'location_id': int(source_loc_id),
+                        'location_dest_id': int(dest_loc_id),
+                        'quantity': adjusted_quantity,
+                        'state': 'done',
+                        'company_id': int(company_id),
+                    }
+
+                    with data_lock:
+                        batched_data.append((move, move_line, record['id']))
+                        success_count += 1
+
+                    end_time = datetime.datetime.now()
+                    duration = str(end_time - start_time)
+                    self.set_log_mc.create_log_note_success(record, start_time, end_time, duration, 'Physical Inventory', write_date)
+                    self.set_log_ss.create_log_note_success(record, start_time, end_time, duration, 'Physical Inventory', write_date)
 
                 except Exception as e:
-                    print(f"[ERROR] Record ID {record['id']} gagal: {str(e)}")
+                    with data_lock:
+                        error_count += 1
 
+                    error_message = str(e)
+                    self.set_log_mc.create_log_note_failed(record, 'Physical Inventory', error_message, write_date)
+                    self.set_log_ss.create_log_note_failed(record, 'Physical Inventory', error_message, write_date)
+
+                    print(f"[ERROR] Record ID {record.get('id')} gagal: {error_message}")
+
+            # Parallel processing
             with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-                futures = [executor.submit(_process_single_adjustment_record, rec) for rec in transaksi_stock_adjustment]
-                concurrent.futures.wait(futures)
+                executor.map(_process_single_adjustment_record, transaksi_stock_adjustment)
 
+            # Grouping into chunks
+            def chunked(data, size):
+                for i in range(0, len(data), size):
+                    yield data[i:i + size]
+
+            for chunk in chunked(batched_data, 100):
+                move_batch = [item[0] for item in chunk]
+                line_batch = [item[1] for item in chunk]
+                id_batch = [item[2] for item in chunk]
+
+                move_ids = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                    self.target_client.uid, self.target_client.password, 'stock.move', 'create', [move_batch])
+
+                for i, move_id in enumerate(move_ids):
+                    line_batch[i]['move_id'] = move_id
+
+                self.target_client.call_odoo('object', 'execute_kw', self.target_client.db,
+                    self.target_client.uid, self.target_client.password, 'stock.move.line', 'create', [line_batch])
+
+                self.source_client.call_odoo('object', 'execute_kw', self.source_client.db,
+                    self.source_client.uid, self.source_client.password, model_name, 'write',
+                    [[rec_id] for rec_id in id_batch], {'is_integrated': True})
+
+            # Final summary
+            print(f"[SUMMARY] Total: {len(transaksi_stock_adjustment)}, Sukses: {success_count}, Dilewati: {skipped_count}, Gagal: {error_count}")
             return True
 
         except Exception as e:
-            print(f"[FATAL ERROR] {str(e)}")
+            end_time = datetime.datetime.now()
+            duration = str(end_time - start_time)
+            message_exception = str(e)
+
+            # Jika error besar di level atas (global failure), log 1x saja (tanpa record)
+            self.set_log_mc.create_log_note_failed("GLOBAL", 'Physical Inventory', message_exception, write_date)
+            self.set_log_ss.create_log_note_failed("GLOBAL", 'Physical Inventory', message_exception, write_date)
+
+            print(f"[FATAL ERROR] {message_exception}")
             return False
 
     def update_session_status(self, model_name, fields, description, date_from, date_to):

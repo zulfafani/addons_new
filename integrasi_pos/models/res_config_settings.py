@@ -26,6 +26,7 @@ class ResConfigSettings(models.TransientModel):
     validate_discount_button = fields.Boolean("Discount Button", config_parameter="pos.validate_discount_button", help="Allow manager to validate discount button.")
     one_time_password = fields.Boolean("One Time Password for an Order", config_parameter="pos.one_time_password", help="Require OTP for every function.")
     multiple_barcode_activate = fields.Boolean("Multiple Barcode Activation", config_parameter="pos.multiple_barcode_activate", help="Enable multiple barcode activation.")
+    pricelist_configuration = fields.Boolean("Pricelist Configuration", config_parameter="pos.pricelist_configuration", help="Please Configure Your Needs for Pricelist.")
     allow_multiple_global_discounts = fields.Boolean(
         "Allow Multiple Discounts", 
         config_parameter="pos.allow_multiple_global_discounts", 
@@ -101,6 +102,7 @@ class ResConfigSettings(models.TransientModel):
                 'validate_cash_drawer': config.get_param('pos.validate_cash_drawer') == 'True',
                 'validate_reprint_receipt': config.get_param('pos.validate_reprint_receipt') == 'True',
                 'validate_discount_button': config.get_param('pos.validate_discount_button') == 'True',
+                'pricelist_configuration': config.get_param('pos.pricelist_configuration') == 'True',
                 'allow_multiple_global_discounts': config.get_param('pos.allow_multiple_global_discounts') == 'True',
             }
         except Exception as e:

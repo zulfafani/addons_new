@@ -1,11 +1,55 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates xml:space="preserve">
     <t t-name="integrasi_pos.DbNameNavbar" owl="1">
-        <div class="o_navbar_db_name d-flex align-items-center justify-content-center px-3" 
-             title="Database Identifier"
-             style="height: 100%;">
-            <span t-esc="state.dbName" 
-                  style="font-weight: bold; color: #fff; line-height: 1;" />
+        <div class="o_navbar_db_name d-flex align-items-center px-3" 
+             style="height: 100%; gap: 12px;">
+            
+            <!-- Nama Database -->
+            <span class="db-name-text" 
+                  t-esc="state.dbName" 
+                  style="font-weight: 600; color: #fff; font-size: 13px;" />
+            
+            <!-- Container untuk tombol -->
+            <div class="d-flex align-items-center" style="gap: 6px;">
+                
+                <!-- Tombol Reset Cache -->
+                <button 
+                    class="db-action-btn btn-cache-reset"
+                    t-on-click="resetCacheAndRefresh"
+                    title="Clear Cache dan Refresh">
+                    Clear Cache
+                </button>
+            </div>
         </div>
+        
+        <style>
+            .db-action-btn {
+                background: rgba(255,255,255,0.1);
+                border: 1px solid rgba(255,255,255,0.3);
+                border-radius: 4px;
+                color: white;
+                padding: 4px 8px;
+                font-size: 11px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                line-height: 1;
+                font-weight: 500;
+            }
+            
+            .db-action-btn:hover {
+                background: rgba(255,255,255,0.2);
+                transform: translateY(-1px);
+            }
+            
+            .btn-refresh:hover {
+                background: rgba(0, 123, 255, 0.3);
+                border-color: rgba(0, 123, 255, 0.5);
+            }
+            
+            .btn-cache-reset:hover {
+                background: rgba(255, 193, 7, 0.3);
+                border-color: rgba(255, 193, 7, 0.5);
+            }
+        </style>
     </t>
 </templates>

@@ -52,6 +52,7 @@ from . import product_tag
 from . import res_partner_category
 from . import loyalty_history
 from . import pos_payment
-
+from . import tuning_invoice_creation
+from . import customer_group
 # from . import print_barcode
 # from . import master_type

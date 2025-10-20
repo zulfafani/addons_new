@@ -6,18 +6,29 @@ import { _t } from "@web/core/l10n/translation";
 import { useBarcodeReader } from "@point_of_sale/app/barcode/barcode_reader_hook";
 import { ConfirmPopup } from "@point_of_sale/app/utils/confirm_popup/confirm_popup";
 import { useService } from "@web/core/utils/hooks";
+import { useState } from "@odoo/owl";
 
 patch(ProductScreen.prototype, {
     setup() {
         super.setup(...arguments);
         this.notification = useService("pos_notification");
+        
+        // Setup mobile pane state
+        if (!this.pos.mobile_pane) {
+            this.pos.mobile_pane = 'products'; // default to products view
+        }
+        
         useBarcodeReader({
             coupon: this._onCouponScan,
         });
     },
     
+    // Method untuk set mobile pane
+    setMobilePane(pane) {
+        this.pos.mobile_pane = pane;
+    },
+    
     _onCouponScan(code) {
-        // IMPROVEMENT: Ability to understand if the scanned code is to be paid or to be redeemed.
         this.currentOrder.activateCode(code.base_code);
     },
     
@@ -25,8 +36,6 @@ patch(ProductScreen.prototype, {
         const selectedLine = this.currentOrder.get_selected_orderline();
         if (key === "-") {
             if (selectedLine && selectedLine.eWalletGiftCardProgram) {
-                // Do not allow negative quantity or price in a gift card or ewallet orderline.
-                // Refunding gift card or ewallet is not supported.
                 this.notification.add(
                     _t("You cannot set negative quantity or price to gift card or ewallet."),
                     4000
@@ -53,24 +62,12 @@ patch(ProductScreen.prototype, {
             if (confirmed) {
                 buffer = null;
             } else {
-                // Cancel backspace
                 return;
             }
         }
         return super.updateSelectedOrderline({ buffer, key });
     },
     
-    /**
-     * 1/ Perform the usual set value operation (super._setValue(val)) if the line being modified
-     * is not a reward line or if it is a reward line, the `val` being set is '' or 'remove' only.
-     *
-     * 2/ Update activated programs and coupons when removing a reward line.
-     *
-     * 3/ Trigger 'update-rewards' if the line being modified is a regular line or
-     * if removing a reward line.
-     *
-     * @override
-     */
     _setValue(val) {
         const selectedLine = this.currentOrder.get_selected_orderline();
         if (
@@ -111,6 +108,7 @@ patch(ProductScreen.prototype, {
         this.currentOrder._updateRewards();
     },
     
+
     async _barcodeGS1Action(code) {
         await super._barcodeGS1Action(code);
         this.currentOrder._updateRewards();

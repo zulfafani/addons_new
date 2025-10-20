@@ -10,8 +10,6 @@ class WizardGenerateStockLedger(models.TransientModel):
     @api.model
     def default_get(self, fields):
         res = super().default_get(fields)
-        # Jalankan langsung jika ingin otomatis saat wizard dibuka
-        # self.env['balance.stock'].get_report_stock_akhir()
         return res
 
     def action_generate(self):
@@ -46,28 +44,51 @@ class ReportStockAkhir(models.Model):
         # Hapus data lama
         cr.execute("TRUNCATE balance_stock RESTART IDENTITY CASCADE;")
 
-        # Query aggregate langsung di PostgreSQL
+        # Query yang mencakup semua pergerakan stock termasuk transfer internal
         cr.execute("""
+            WITH stock_moves AS (
+                SELECT
+                    sml.id,
+                    sml.product_id,
+                    sml.date,
+                    sml.reference,
+                    sml.location_id,
+                    sml.location_dest_id,
+                    sml.quantity,
+                    src.usage as src_usage,
+                    src.complete_name as src_name,
+                    dest.usage as dest_usage,
+                    dest.complete_name as dest_name
+                FROM stock_move_line sml
+                JOIN stock_location src ON src.id = sml.location_id
+                JOIN stock_location dest ON dest.id = sml.location_dest_id
+                WHERE sml.state = 'done'
+            )
             SELECT
-                sml.product_id,
-                DATE(sml.date) AS date_stock,
+                product_id,
+                DATE(date) AS date_stock,
+                reference,
+                location_id,
+                location_dest_id,
+                -- Stock OUT: keluar dari internal (baik ke internal lain maupun non-internal)
                 COALESCE(SUM(
-                    CASE WHEN dest.usage IN ('customer','supplier','inventory','view','production','transit')
-                        THEN sml.quantity ELSE 0 END
+                    CASE 
+                        WHEN src_usage = 'internal' 
+                        THEN quantity 
+                        ELSE 0 
+                    END
                 ), 0) AS stock_out,
+                -- Stock IN: masuk ke internal (baik dari internal lain maupun non-internal)
                 COALESCE(SUM(
-                    CASE WHEN src.usage IN ('customer','supplier','inventory','view','production','transit')
-                        THEN sml.quantity ELSE 0 END
-                ), 0) AS stock_in,
-                MAX(sml.reference) AS reference,
-                MAX(sml.location_id) AS location_id,
-                MAX(sml.location_dest_id) AS location_dest_id
-            FROM stock_move_line sml
-            JOIN stock_location src ON src.id = sml.location_id
-            JOIN stock_location dest ON dest.id = sml.location_dest_id
-            WHERE sml.state = 'done'
-            GROUP BY sml.product_id, DATE(sml.date)
-            ORDER BY sml.product_id, date_stock;
+                    CASE 
+                        WHEN dest_usage = 'internal'
+                        THEN quantity 
+                        ELSE 0 
+                    END
+                ), 0) AS stock_in
+            FROM stock_moves
+            GROUP BY product_id, DATE(date), reference, location_id, location_dest_id
+            ORDER BY product_id, date_stock, reference;
         """)
 
         rows = cr.fetchall()
@@ -77,7 +98,7 @@ class ReportStockAkhir(models.Model):
         numbering_per_product = {}
         bulk_data = []
 
-        for product_id, date_stock, stock_out, stock_in, reference, location_id, location_dest_id in rows:
+        for product_id, date_stock, reference, location_id, location_dest_id, stock_out, stock_in in rows:
             last_stock = last_stock_per_product.get(product_id, 0.0)
             stock_akhir = last_stock + stock_in - stock_out
             last_stock_per_product[product_id] = stock_akhir
@@ -85,7 +106,7 @@ class ReportStockAkhir(models.Model):
             numbering_per_product[product_id] = numbering_per_product.get(product_id, 0) + 1
 
             bulk_data.append({
-                'numbering': numbering_per_product[product_id],
+                'numbering': str(numbering_per_product[product_id]),
                 'date_stock': date_stock,
                 'reference': reference,
                 'product_id': product_id,
@@ -98,7 +119,6 @@ class ReportStockAkhir(models.Model):
 
         if bulk_data:
             self.env['balance.stock'].create(bulk_data)
-
 
     @api.model
     def _scheduler_generate_stock_report(self):

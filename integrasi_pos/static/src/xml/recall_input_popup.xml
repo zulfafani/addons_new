@@ -7,10 +7,43 @@
                     <h3><t t-esc="props.title or 'Pulihkan Transaksi'"/></h3>
                 </div>
 
-                <div class="popup-body mb-2">
-                    <t t-if="props.body">
-                        <p><t t-esc="props.body"/></p>
-                    </t>
+                <!-- Subtitle untuk instruksi -->
+                <div class="popup-subtitle mb-2" t-if="props.subtitle">
+                    <p class="fw-bold mb-1"><t t-esc="props.subtitle"/></p>
+                </div>
+
+                <!-- List transaksi dengan tombol hapus -->
+                <div class="popup-body mb-3">
+                    <div class="transaction-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9;">
+                        <t t-foreach="state.orders" t-as="order" t-key="order_index">
+                            <div class="transaction-item d-flex justify-content-between align-items-center" 
+                                 style="padding: 10px; margin-bottom: 8px; background: white; border-radius: 5px; border-left: 4px solid #007bff;">
+                                <div class="transaction-info flex-grow-1">
+                                    <div class="fw-bold text-primary">
+                                        #<t t-esc="order_index + 1"/>: <t t-esc="order.notes"/>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.9em;">
+                                        <t t-esc="order.data.lines.length"/> item
+                                        <t t-if="order.timestamp">
+                                            • <t t-esc="new Date(order.timestamp).toLocaleString('id-ID', {dateStyle: 'short', timeStyle: 'short'})"/>
+                                        </t>
+                                    </div>
+                                </div>
+                                <button 
+                                    class="btn btn-sm btn-danger ms-2" 
+                                    t-on-click="() => deleteOrder(order_index)"
+                                    style="min-width: 60px;">
+                                    🗑️ Hapus
+                                </button>
+                            </div>
+                        </t>
+                        
+                        <!-- Pesan jika tidak ada transaksi -->
+                        <div t-if="state.orders.length === 0" 
+                             class="text-center text-muted py-4">
+                            <p>Tidak ada transaksi yang di-hold</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="input-container my-2">
@@ -21,27 +54,28 @@
                         t-ref="input"
                         placeholder="Masukkan nomor transaksi"
                         class="form-control text-center fs-4"
+                        style="font-weight: bold;"
                     />
                 </div>
 
-                <div class="numpad-grid mb-3">
-                    <button t-on-click="() => appendNumber('1')">1</button>
-                    <button t-on-click="() => appendNumber('2')">2</button>
-                    <button t-on-click="() => appendNumber('3')">3</button>
-                    <button t-on-click="() => appendNumber('4')">4</button>
-                    <button t-on-click="() => appendNumber('5')">5</button>
-                    <button t-on-click="() => appendNumber('6')">6</button>
-                    <button t-on-click="() => appendNumber('7')">7</button>
-                    <button t-on-click="() => appendNumber('8')">8</button>
-                    <button t-on-click="() => appendNumber('9')">9</button>
-                    <button t-on-click="clearAll">C</button>
-                    <button t-on-click="() => appendNumber('0')">0</button>
-                    <button t-on-click="removeLast">⌫</button>
+                <div class="numpad-grid mb-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('1')">1</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('2')">2</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('3')">3</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('4')">4</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('5')">5</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('6')">6</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('7')">7</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('8')">8</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('9')">9</button>
+                    <button class="btn btn-outline-secondary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="clearAll">C</button>
+                    <button class="btn btn-outline-primary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="() => appendNumber('0')">0</button>
+                    <button class="btn btn-outline-secondary" style="padding: 15px; font-size: 1.2em; font-weight: bold;" t-on-click="removeLast">⌫</button>
                 </div>
 
-                <div class="button-container d-flex justify-content-between">
-                    <button class="btn btn-success fw-bold" t-on-click="confirm">OK</button>
-                    <button class="btn btn-danger fw-bold" t-on-click="cancel">Batal</button>
+                <div class="button-container d-flex justify-content-between gap-2">
+                    <button class="btn btn-success fw-bold flex-grow-1" style="padding: 12px; font-size: 1.1em;" t-on-click="confirm">✓ OK</button>
+                    <button class="btn btn-danger fw-bold flex-grow-1" style="padding: 12px; font-size: 1.1em;" t-on-click="cancel">✗ Batal</button>
                 </div>
             </main>
         </div>

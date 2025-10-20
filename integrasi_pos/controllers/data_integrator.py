@@ -560,20 +560,13 @@ class DataIntegrator:
             id_for_update_index_store = None
             code = record.get(field_uniq)
             target_record = next((item for item in existing_data_target if item[field_uniq] == code), None)
-            
-            # DEBUG: Logging untuk product.template
-            if model == 'product.template':
-                print(f"\n{'='*60}")
-                print(f"DEBUG - Product: {record.get('name')} ({code})")
-                print(f"Source list_price: {record.get('list_price')} (type: {type(record.get('list_price'))})")
-                print(f"Target list_price: {target_record.get('list_price')} (type: {type(target_record.get('list_price'))})")
-                print(f"Are they different? {record.get('list_price') != target_record.get('list_price')}")
-                print(f"{'='*60}\n")
+            # record = self.validate_record_data_update_before(record, model, [record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
+            # target_record = self.validate_record_data_update_before(target_record, model, [target_record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
 
             if model == 'product.pricelist':
                 filtered_pricelist = [item_line for item_line in dict_relation_source.get('product.pricelist.item', []) if item_line['id'] in record.get('item_ids', [])]
                 filtered_pricelist_target = [item_line_target for item_line_target in dict_relation_target.get('product.pricelist.item', []) 
-                            if any(int(item_line_target.get('id_mc', 0)) == item_line.get('id') for item_line in filtered_pricelist)]
+                             if any(int(item_line_target.get('id_mc', 0)) == item_line.get('id') for item_line in filtered_pricelist)]
 
                 record['item_ids'] = self.transfer_pricelist_lines_update(filtered_pricelist, 'product.pricelist.item', [record], dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
                 target_record['item_ids'] = self.transfer_pricelist_lines_update_target(filtered_pricelist_target, 'product.pricelist.item', [target_record], dict_relation_source_line, dict_relation_target_line, type_fields_line, relation_fields_line)
@@ -608,48 +601,48 @@ class DataIntegrator:
                     for data_update in data_for_line_update:
                         if isinstance(data_update, dict) and 'id' in data_update:
                             id_mc = data_for_line_update[0]['id']
-                
                 for id in record['item_ids']:
                     id_line_mc = [id['id']]
                     filtered_pricelist_target = [item_line_target for item_line_target in dict_relation_target.get('product.pricelist.item', []) if int(item_line_target.get('id_mc', 0)) in id_line_mc]
-
-            # Perbandingan field dengan handling khusus untuk numeric fields
-            numeric_fields = ['list_price', 'standard_price', 'weight', 'volume']
-            updated_fields = {}
-            
-            for field in record:
-                if field in ('id', 'create_date', 'write_date'):
-                    continue
-                    
-                source_value = record.get(field)
-                target_value = target_record.get(field)
                 
-                # Untuk field numerik, gunakan toleransi untuk menghindari masalah presisi float
-                if field in numeric_fields:
-                    # Pastikan kedua nilai adalah numeric
-                    if isinstance(source_value, (int, float)) and isinstance(target_value, (int, float)):
-                        # Gunakan toleransi kecil untuk perbandingan float
-                        if abs(float(source_value) - float(target_value)) > 0.001:
-                            updated_fields[field] = source_value
-                            if model == 'product.template':
-                                print(f"Field {field} added to updated_fields: {source_value} vs {target_value}")
-                    # Handle case dimana salah satu None atau False
-                    elif source_value != target_value:
-                        updated_fields[field] = source_value
-                        if model == 'product.template':
-                            print(f"Field {field} added to updated_fields (non-numeric): {source_value} vs {target_value}")
-                else:
-                    # Untuk field non-numerik, gunakan perbandingan biasa
-                    if source_value != target_value:
-                        updated_fields[field] = source_value
+                # for id in target_record['item_ids']:
+                #     id_line_target = id['id']
+                #     id_line_mc = id['id_mc']
+                #     if id_line_mc:
+                #         updated_filtered_pricelist = [item_line for item_line in dict_relation_source.get('product.pricelist.item', []) if item_line['id'] == int(id_line_mc)]
+                #         updated_filtered_pricelist = updated_filtered_pricelist[0] if updated_filtered_pricelist else {}
+                #         start_time = time.time()
+                #         # update product.pricelist
+                #         update_line = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
+                #                                     self.target_client.password, 'product.pricelist.item', 'write', [id_line_target, updated_filtered_pricelist])
+                #         end_time = time.time()
+                #         duration = end_time - start_time
+                #     # elif not id_line_mc:
+                #     #     update_line_mc = {}
 
-            # DEBUG: Log updated_fields sebelum filtering
-            if model == 'product.template':
-                print(f"Updated fields BEFORE filtering: {list(updated_fields.keys())}")
-                if 'list_price' in updated_fields:
-                    print(f"✓ list_price IS in updated_fields: {updated_fields['list_price']}")
-                else:
-                    print(f"✗ list_price NOT in updated_fields")
+                #     #     update_line = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
+                #     #                                 self.target_client.password, 'product.pricelist.item', 'write', [id_line_target, updated_filtered_pricelist])
+                #     # else:
+                #     #     lines_update = record['item_ids']
+                #     #     lines_target = target_record['item_ids']
+                #     #     filtered_lines = [item for item in lines_update if item['id'] not in lines_target]
+                        
+                #     #     if filtered_lines:
+                #     #         for line in filtered_lines:
+                #     #             line['pricelist_id'] = record_id
+                            
+                #     #         start_time = time.time()
+                #     #         create = self.target_client.call_odoo('object', 'execute_kw', self.target_client.db, self.target_client.uid,
+                #     #                         self.target_client.password, 'product.pricelist.item', 'create', [filtered_lines])
+                #     #         end_time = time.time()
+                #     #         duration = end_time - start_time
+
+                #     #         if create:
+                #     #             write_date = record['write_date']
+                #     #             self.set_log_mc.create_log_note_update_success(record, record_id, filtered_lines, start_time, end_time, duration, modul, write_date, self.source_client.server_name, self.target_client.server_name)
+                #     #             self.set_log_ss.create_log_note_update_success(record, record_id, filtered_lines, start_time, end_time, duration, modul, write_date)
+
+            updated_fields = {field: record[field] for field in record if record.get(field) != target_record.get(field) and field not in ('id', 'create_date', 'write_date')}
 
             if 'id_mc' in target_record and target_record['id_mc'] == False:
                 updated_fields['id_mc'] = record['id']
@@ -662,109 +655,56 @@ class DataIntegrator:
                 field_data_source = []
                 field_data_target = []
 
-                # Filter untuk many2one fields
                 fields_many2one_to_check = [
-                    'title', 'categ_id', 'category_id', 'uom_id', 'uom_po_id', 'parent_id', 
-                    'location_id', 'partner_id', 'sequence_id', 'warehouse_id',
-                    'default_location_src_id', 'return_picking_type_id', 'default_location_dest_id', 
-                    'product_tmpl_id'
-                ]
-                
+                    'title', 'categ_id', 'category_id',  'uom_id', 'uom_po_id', 'parent_id', 'location_id', 'partner_id', 'sequence_id', 'warehouse_id',
+                    'default_location_src_id', 'return_picking_type_id', 'default_location_dest_id', 'product_tmpl_id']
                 for field in updated_fields:
                     if field in fields_many2one_to_check:
-                        # Pastikan kedua field ada dan merupakan list sebelum dibandingkan
-                        source_field = record.get(field)
-                        target_field = target_record.get(field)
-                        
-                        if isinstance(source_field, list) and isinstance(target_field, list):
-                            if len(source_field) > 1 and len(target_field) > 1:
-                                if source_field[1] == target_field[1]:
-                                    keys_to_remove.append(field)
-                        elif source_field == target_field:
-                            keys_to_remove.append(field)
+                        if record[field][1] == target_record[field][1]:
+                            keys_to_remove.append(field) 
 
-                # Filter untuk many2many fields
                 fields_many2many_to_check = ['taxes_id', 'pos_categ_ids']
                 for field in updated_fields:
                     if field in fields_many2many_to_check:
-                        relation_model = relation_fields.get(field)
+                        relation_model = relation_fields[field]
                         
-                        if relation_model:
-                            field_data_source = []
-                            field_data_target = []
-                            
-                            field_value_source = record.get(field)
-                            if field_value_source:
-                                for data_source in field_value_source:
-                                    name_source = dict_relation_source.get(relation_model, [])
-                                    value_source = next((item['name'] for item in name_source if item['id'] == data_source), None)
-                                    if value_source:
-                                        field_data_source.append(value_source)
-                            
-                            field_value_target = target_record.get(field)
-                            if field_value_target:
-                                for data_target in field_value_target:
-                                    name_target = dict_relation_target.get(relation_model, [])
-                                    value_target = next((item['name'] for item in name_target if item['id'] == data_target), None)
-                                    if value_target:
-                                        field_data_target.append(value_target)
-                            
-                            if sorted(field_data_source) == sorted(field_data_target):
-                                keys_to_remove.append(field)
+                        field_value_source = record.get(field)
+                        for data_source in field_value_source:
+                            name_source = dict_relation_source[relation_model]
+                            value_source = next((item['name'] for item in name_source if item['id'] == data_source), None)
+                            field_data_source.append(value_source)
+                        
+                        field_value_target = target_record.get(field)
+                        for data_target in field_value_target:
+                            name_target = dict_relation_target[relation_model]
+                            value_target = next((item['name'] for item in name_target if item['id'] == data_target), None)
+                            field_data_target.append(value_target)
+                        
+                        if field_data_source == field_data_target:
+                            keys_to_remove.append(field)
 
-                # Filter untuk one2many fields
                 fields_one2many_to_remove = ['invoice_repartition_line_ids', 'refund_repartition_line_ids', 'item_ids']
                 for field in updated_fields:
                     if field in fields_one2many_to_remove:
                         keys_to_remove.append(field)
 
-                # DEBUG: Log fields yang akan dihapus
-                if model == 'product.template':
-                    print(f"Fields to remove: {keys_to_remove}")
-                    if 'list_price' in keys_to_remove:
-                        print(f"WARNING: list_price is in keys_to_remove!")
-
-                # PENTING: Jangan hapus field numeric penting
-                protected_fields = ['list_price', 'standard_price', 'weight', 'volume']
-                
-                # Remove the fields after iteration (kecuali protected fields)
+                # Remove the fields after iteration
                 for key in keys_to_remove:
-                    if key not in protected_fields:
-                        del updated_fields[key]
-                    elif model == 'product.template':
-                        print(f"PROTECTED: {key} not removed from updated_fields")
-
-                # DEBUG: Log updated_fields setelah filtering
-                if model == 'product.template':
-                    print(f"Updated fields AFTER filtering: {list(updated_fields.keys())}")
-                    if 'list_price' in updated_fields:
-                        print(f"✓ list_price STILL in updated_fields: {updated_fields['list_price']}")
-                    else:
-                        print(f"✗ list_price REMOVED from updated_fields")
+                    del updated_fields[key]
 
                 if updated_fields: 
                     valid_record = self.validate_record_data_update(updated_fields, model, [record], type_fields, relation_fields, dict_relation_source, dict_relation_target)
                     if valid_record:
                         record_id = target_record.get('id')
-                        
-                        # DEBUG: Log sebelum update
-                        if model == 'product.template':
-                            print(f"Calling update_data with fields: {list(valid_record.keys())}")
-                            if 'list_price' in valid_record:
-                                print(f"✓ list_price will be updated to: {valid_record['list_price']}")
-                        
                         data_for_update = self.update_data(model, record_id, valid_record, modul, record, last_master_url, target_record)
                 else:
                     id_for_update_index_store = record.get('id')
-                    if model == 'product.template':
-                        print(f"No fields to update for product: {record.get('name')}")
                     
             return data_for_update, id_for_update_index_store
-            
         except Exception as e:
             self.set_log_mc.create_log_note_failed(f"Exception - {model}", f"{model} from {self.source_client.server_name} to {self.target_client.server_name}", f"Error occurred while processing record: {e}", None)
             self.set_log_ss.create_log_note_failed(f"Exception - {model}", model, f"Error occurred while processing record: {e}", None)
-            return None, None
+        
      
     # to get string value for many2one, many2many data type
     def validate_record_data(self, record, model, data_list, type_fields, relation_fields, dict_relation_source, dict_relation_target):

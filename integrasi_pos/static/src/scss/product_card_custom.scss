@@ -1,0 +1,135 @@
+// ==================== PRODUCT CARD LIST STYLES - VERTICAL ====================
+
+.product-list-item {
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-bottom: 10px !important;
+    padding: 16px 20px !important;
+    transition: all 0.2s ease;
+    background-color: white;
+    min-height: 80px;
+    position: relative;
+    
+    &:hover {
+        border-color: #dee2e6;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+    }
+    
+    &:active {
+        background-color: #e9ecef;
+        transform: translateY(0);
+    }
+}
+
+// Product Info Icon - Pojok Kanan Atas
+.product-information-icon-corner {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    cursor: pointer;
+    z-index: 10;
+    
+    i {
+        font-size: 16px;
+        color: #adb5bd;
+        
+        &:hover {
+            color: #495057 !important;
+        }
+    }
+}
+
+// SKU Row
+.product-list-sku-row {
+    width: 100%;
+    text-align: center;
+    
+    .product-list-sku {
+        font-size: 11px;
+        color: #0d6efd;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        display: inline-block;
+        padding: 4px 12px;
+        background-color: #e7f1ff;
+        border-radius: 4px;
+    }
+}
+
+// Name Row
+.product-list-name-row {
+    width: 100%;
+    text-align: center;
+    
+    .product-list-name {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #212529;
+        word-wrap: break-word;
+        word-break: break-word;
+        display: block;
+    }
+}
+
+// Price Row
+.product-list-price-row {
+    width: 100%;
+    text-align: center;
+    
+    .price-tag {
+        font-size: 11px !important;
+        color: #5f5486 !important;
+        font-weight: 700 !important;
+    }
+}
+
+// Mobile Responsive
+@media screen and (max-width: 768px) {
+    .product-list-item {
+        padding: 14px 16px !important;
+        min-height: 70px;
+        
+        &:active {
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+    }
+    
+    .product-list-sku-row {
+        margin-bottom: 8px !important;
+        
+        .product-list-sku {
+            font-size: 11px;
+            padding: 3px 10px;
+        }
+    }
+    
+    .product-list-name-row {
+        margin-bottom: 8px !important;
+        
+        .product-list-name {
+            font-size: 11px;
+        }
+    }
+    
+    .product-list-price-row {
+        .price-tag {
+            font-size: 11px !important;
+        }
+    }
+}
+
+// Container untuk list products
+.products-widget .product-list {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.products-widget.list-mode {
+    .product-list-item {
+        width: 100% !important;
+        margin: 0 0 10px 0 !important;
+    }
+}

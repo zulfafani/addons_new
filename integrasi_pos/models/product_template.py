@@ -1,84 +1,112 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, api
+from odoo.exceptions import UserError
 
 
-class ProductTemplateInherit(models.Model):
+class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    id_mc = fields.Char(string="ID MC", default=False)
     multi_barcode_ids = fields.One2many('multiple.barcode', 'product_tmpl_id', string='Multiple Barcodes')
-    vit_sub_div = fields.Char(string="Sub Category")
-    vit_item_kel = fields.Char(string="Kelompok")
-    vit_item_type = fields.Char(string="Type")
-    is_fixed_price = fields.Boolean(string="Fixed Price", default=False)
-    vit_is_discount = fields.Boolean(string="Is Discount", default=False)
-    brand = fields.Char(string="Brand")
+    id_mc = fields.Char(string="ID MAC", readonly=True)
+    vit_sub_div = fields.Char(string="Sub Category", readonly=True)
+    vit_item_kel = fields.Char(string="Ketompek", readonly=True)
+    vit_item_type = fields.Char(string="Type", readonly=True)
+    is_fixed_price = fields.Boolean(string="Fixed Price", readonly=True)
+    brand = fields.Char(string="Brand", readonly=True)
+
+    def write(self, vals):
+        # # Field-field yang readonly - tidak boleh diubah
+        # readonly_fields = [
+        #     'id_mc', 'vit_sub_div', 'vit_item_kel', 'vit_item_type', 'is_fixed_price', 'brand',
+        #     'default_code', 'categ_id', 'standard_price', 'sale_ok', 'purchase_ok', 
+        #     'taxes_id', 'detailed_type', 'invoice_policy', 'uom_id', 'uom_po_id'
+        # ]
+        
+        # # Cek jika ada field readonly yang mencoba diubah
+        # for field in readonly_fields:
+        #     if field in vals:
+        #         raise UserError(f"Cannot modify field '{self._fields[field].string}' as it is read-only.")
+        
+        # Simpan nilai lama SEBELUM super().write() dipanggil
+        old_values = {}
+        for record in self:
+            old_values[record.id] = {
+                'list_price': record.list_price,
+                'product_tag_ids': record.product_tag_ids.mapped('name')
+            }
+        
+        # Panggil super write
+        result = super(ProductTemplate, self).write(vals)
+        
+        # Log ke chatter untuk list_price dan product_tag_ids
+        for record in self:
+            message_body = ""
+            
+            # Log untuk list_price
+            if 'list_price' in vals:
+                old_price = old_values[record.id]['list_price']
+                new_price = vals['list_price']
+                message_body += f"Sales Price updated: {old_price} → To: {new_price}\n"
+            
+            # Log untuk product_tag_ids
+            if 'product_tag_ids' in vals:
+                old_tags = old_values[record.id]['product_tag_ids']
+                new_tags_operation = vals.get('product_tag_ids', [])
+                
+                # Process the operation to get new tags
+                new_tags = []
+                for operation in new_tags_operation:
+                    if operation[0] == 6:  # REPLACE
+                        new_tags = self.env['product.tag'].browse(operation[2]).mapped('name')
+                    elif operation[0] == 4:  # ADD
+                        tag = self.env['product.tag'].browse(operation[1])
+                        new_tags = list(set(old_tags + [tag.name]))
+                    elif operation[0] == 3:  # REMOVE
+                        tag = self.env['product.tag'].browse(operation[1])
+                        new_tags = [tag_name for tag_name in old_tags if tag_name != tag.name]
+                    elif operation[0] == 5:  # CLEAR ALL
+                        new_tags = []
+                
+                old_tags_str = ', '.join(old_tags) if old_tags else 'None'
+                new_tags_str = ', '.join(new_tags) if new_tags else 'None'
+                message_body += f"Product tags updated: Old Tags: {old_tags_str} → New Tags: {new_tags_str}"
+            
+            # Post message ke chatter jika ada perubahan
+            if message_body:
+                record.message_post(body=message_body)
+        
+        return result
 
     @api.model
     def create(self, vals):
-        record = super(ProductTemplateInherit, self).create(vals)
-        update_vals = {}
-        if 'is_fixed_price' in vals:
-            update_vals['is_fixed_price'] = vals['is_fixed_price']
-        if 'brand' in vals:
-            update_vals['brand'] = vals['brand']
-        if update_vals:
-            record.product_variant_ids.write(update_vals)
+        # Untuk create, log informasi ke chatter
+        record = super(ProductTemplate, self).create(vals)
+        
+        message_body = "Product created with following information:\n"
+        
+        # Log list_price jika ada
+        if 'list_price' in vals:
+            message_body += f"- Sales Price: {vals['list_price']}\n"
+        
+        # Log product tags jika ada
+        if 'product_tag_ids' in vals:
+            tag_operations = vals.get('product_tag_ids', [])
+            tag_names = []
+            for operation in tag_operations:
+                if operation[0] == 6:  # REPLACE
+                    tags = self.env['product.tag'].browse(operation[2])
+                    tag_names = tags.mapped('name')
+                elif operation[0] == 4:  # ADD
+                    tag = self.env['product.tag'].browse(operation[1])
+                    tag_names.append(tag.name)
+            
+            if tag_names:
+                message_body += f"- Tags: {', '.join(tag_names)}\n"
+        
+        record.message_post(body=message_body)
+        
         return record
-
-    def write(self, vals):
-        res = super(ProductTemplateInherit, self).write(vals)
-        update_vals = {}
-        if 'is_fixed_price' in vals:
-            update_vals['is_fixed_price'] = vals['is_fixed_price']
-        if 'brand' in vals:
-            update_vals['brand'] = vals['brand']
-        if update_vals:
-            for template in self:
-                template.product_variant_ids.write(update_vals)
-        return res
-
-
-
-    def _check_barcode_uniqueness(self):
-        # override to disable barcode uniqueness constraint
-        return True
-
-    @api.model
-    def parse_weight_barcode(self, code):
-        prefix_timbangan = "21"
-        digit_awal = 2
-        digit_akhir = 4
-        panjang_barcode = 7
-
-        if not code or not code.startswith(prefix_timbangan):
-            return {'error': 'Invalid barcode'}
-
-        try:
-            product_barcode = code[:-panjang_barcode]
-            qty_str = code[-panjang_barcode:][digit_awal:digit_akhir + 1]
-            quantity = float(qty_str) / 1000.0
-
-            product = self.search_read(
-                [('barcode', '=', product_barcode)],
-                ['id', 'to_weight'], limit=1
-            )
-
-            if not product:
-                return {'error': 'Product not found'}
-
-            if not product[0]['to_weight']:
-                return {'error': 'Product is not weighted'}
-
-            return {
-                'code': product_barcode,
-                'quantity': quantity,
-                'product_template_id': product[0]['id'],
-            }
-
-        except Exception as e:
-            return {'error': str(e)}
-
+    
 class ProductProductInherit(models.Model):
     _inherit = 'product.product'
 

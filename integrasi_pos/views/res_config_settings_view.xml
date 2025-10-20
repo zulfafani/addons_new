@@ -25,10 +25,10 @@
                         invisible="manager_validation != True">
                         <field name="validate_order_line_deletion"/>
                     </setting>
-                    <setting id="validate_discount" string="Apply Discount"
+                    <setting id="validate_discount_button" string="Apply Discount"
                         help="Require manager approval before applying discounts."
                         invisible="manager_validation != True">
-                        <field name="validate_discount"/>
+                        <field name="validate_discount_button"/>
                     </setting>
                     <setting id="validate_price_change" string="Price Change"
                         help="Require manager approval for changing product prices."
@@ -88,6 +88,15 @@
                     <setting id="allow_multiple_global_discounts" string="Multiple Discount"
                         help="Activate Mutliple Discount.">
                         <field name="allow_multiple_global_discounts"/>
+                    </setting>
+                </block>
+            </app>
+
+            <app data-string="Point of sale" string="Point of Sale" name="point_of_sale" groups="point_of_sale.group_pos_manager">
+                <block title="Pricelist Configuration" id="pos_pricelist_configuration">
+                    <setting id="pricelist_configuration" string="Pricelist Configuration"
+                        help="POSVIT 2.0 Pricelist Confiration.">
+                        <field name="pricelist_configuration"/>
                     </setting>
                 </block>
             </app>
